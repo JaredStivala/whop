@@ -1,3 +1,4 @@
+// Member Directory Application - Multi-company Support
 class MemberDirectory {
     constructor() {
         this.members = [];
@@ -6,45 +7,149 @@ class MemberDirectory {
         this.sortField = 'joined_at';
         this.sortDirection = 'desc';
         this.loading = false;
+        this.companyId = this.getCompanyId();
+        
+        if (!this.companyId) {
+            this.showCompanyIdError();
+            return;
+        }
+        
         this.init();
     }
 
+    // Get company ID from multiple sources
+    getCompanyId() {
+        // 1. Check URL path for /directory/:companyId
+        const pathMatch = window.location.pathname.match(/\/directory\/([^\/]+)/);
+        if (pathMatch) {
+            return pathMatch[1];
+        }
+        
+        // 2. Check URL query parameter ?company=...
+        const urlParams = new URLSearchParams(window.location.search);
+        const queryCompany = urlParams.get('company') || urlParams.get('companyId');
+        if (queryCompany) {
+            return queryCompany;
+        }
+        
+        // 3. Check URL hash #company=...
+        const hashMatch = window.location.hash.match(/[#&]company=([^&]+)/);
+        if (hashMatch) {
+            return hashMatch[1];
+        }
+        
+        // 4. Check if stored in localStorage (for persistence)
+        const storedCompanyId = localStorage.getItem('whop_company_id');
+        if (storedCompanyId) {
+            return storedCompanyId;
+        }
+        
+        // 5. Try to extract from current domain (if using subdomains)
+        const subdomain = window.location.hostname.split('.')[0];
+        if (subdomain && subdomain !== 'www' && subdomain.startsWith('biz_')) {
+            return subdomain;
+        }
+        
+        return null;
+    }
+
+    showCompanyIdError() {
+        document.getElementById('app').innerHTML = `
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; background: #0a0a0a; color: white; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                <div style="text-align: center; max-width: 600px; padding: 40px;">
+                    <div style="font-size: 64px; margin-bottom: 20px;">🏢</div>
+                    <h1 style="font-size: 32px; margin-bottom: 16px;">Company ID Required</h1>
+                    <p style="font-size: 18px; color: #888; margin-bottom: 32px;">
+                        To view the member directory, you need to specify a company ID.
+                    </p>
+                    
+                    <div style="background: rgba(39, 39, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 24px; margin-bottom: 32px; text-align: left;">
+                        <h3 style="margin-bottom: 16px; color: #fff;">How to access your directory:</h3>
+                        <ul style="color: #ccc; line-height: 1.6;">
+                            <li><strong>URL Parameter:</strong> <code>?company=biz_your_company_id</code></li>
+                            <li><strong>Direct Path:</strong> <code>/directory/biz_your_company_id</code></li>
+                            <li><strong>Manual Entry:</strong> Enter your company ID below</li>
+                        </ul>
+                    </div>
+                    
+                    <div style="display: flex; gap: 12px; max-width: 400px; margin: 0 auto;">
+                        <input 
+                            type="text" 
+                            id="companyIdInput" 
+                            placeholder="Enter company ID (e.g., biz_...)" 
+                            style="flex: 1; padding: 12px 16px; background: rgba(39, 39, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; color: white; font-size: 14px;"
+                        />
+                        <button 
+                            onclick="memberDirectory.setCompanyId()" 
+                            style="padding: 12px 20px; background: #3b82f6; border: none; border-radius: 8px; color: white; font-weight: 600; cursor: pointer;"
+                        >
+                            Go
+                        </button>
+                    </div>
+                    
+                    <p style="font-size: 14px; color: #666; margin-top: 24px;">
+                        Need help? Contact your community administrator for the correct company ID.
+                    </p>
+                </div>
+            </div>
+        `;
+    }
+
+    setCompanyId() {
+        const input = document.getElementById('companyIdInput');
+        const companyId = input.value.trim();
+        
+        if (!companyId) {
+            alert('Please enter a company ID');
+            return;
+        }
+        
+        // Store for future visits
+        localStorage.setItem('whop_company_id', companyId);
+        
+        // Redirect to the directory with company ID
+        window.location.href = `/directory/${companyId}`;
+    }
+
     async init() {
-        this.createModernUI();
-        await this.loadMembers();
-        this.setupEventListeners();
+        try {
+            console.log(`🚀 Initializing Member Directory for company: ${this.companyId}`);
+            this.createModernUI();
+            await this.loadMembers();
+            this.setupEventListeners();
+            this.hideLoadingScreen();
+        } catch (error) {
+            console.error('❌ Initialization error:', error);
+            this.hideLoadingScreen();
+        }
+    }
+
+    hideLoadingScreen() {
+        const loadingScreen = document.getElementById('loadingScreen');
+        if (loadingScreen) {
+            loadingScreen.style.opacity = '0';
+            setTimeout(() => {
+                loadingScreen.style.display = 'none';
+            }, 300);
+        }
     }
 
     createModernUI() {
-        document.body.innerHTML = `
+        const appContainer = document.getElementById('app');
+        appContainer.innerHTML = `
             <div class="app-container">
-                <!-- Header -->
-                <header class="app-header">
-                    <div class="header-content">
-                        <div class="header-left">
-                            <div class="app-icon">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                                    <rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" stroke-width="2"/>
-                                    <path d="M7 8h10M7 12h10M7 16h6" stroke="currentColor" stroke-width="2"/>
-                                </svg>
-                            </div>
-                            <div class="header-title">
-                                <h1>Member Directory</h1>
-                                <p>Connect with fellow community members</p>
-                            </div>
+                <!-- Company Header -->
+                <div class="company-header" style="max-width: 1200px; margin: 0 auto; padding: 20px 24px; border-bottom: 1px solid rgba(255, 255, 255, 0.08);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+                        <div>
+                            <h1 style="font-size: 24px; font-weight: 700; color: #fff; margin-bottom: 4px;">Member Directory</h1>
+                            <p style="color: #888; font-size: 14px;">Company: ${this.companyId}</p>
                         </div>
-                        <div class="header-actions">
-                            <button class="btn-secondary" id="refreshBtn">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                                    <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" stroke="currentColor" stroke-width="2"/>
-                                    <path d="M21 3v5h-5M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" stroke="currentColor" stroke-width="2"/>
-                                    <path d="M8 16H3v5" stroke="currentColor" stroke-width="2"/>
-                                </svg>
-                                Refresh
-                            </button>
-                        </div>
+                        <button onclick="memberDirectory.changeCompany()" class="btn-secondary" style="background: rgba(39, 39, 42, 0.8); border: 1px solid rgba(255, 255, 255, 0.12); color: #ffffff; padding: 8px 16px; border-radius: 6px; font-size: 12px; cursor: pointer;">
+                            Change Company
+                        </button>
                     </div>
-                </header>
+                </div>
 
                 <!-- Stats Cards -->
                 <section class="stats-section">
@@ -181,564 +286,79 @@ class MemberDirectory {
                 </section>
             </div>
 
-            <style>
-                /* Modern CSS Reset and Base Styles */
-                * {
-                    margin: 0;
-                    padding: 0;
-                    box-sizing: border-box;
-                }
-
-                body {
-                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Inter', sans-serif;
-                    background: #0a0a0a;
-                    color: #ffffff;
-                    line-height: 1.5;
-                    overflow-x: hidden;
-                }
-
-                .app-container {
-                    min-height: 100vh;
-                    background: linear-gradient(180deg, #0a0a0a 0%, #111111 100%);
-                }
-
-                /* Header Styles */
-                .app-header {
-                    background: rgba(17, 17, 17, 0.8);
-                    backdrop-filter: blur(20px);
-                    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-                    position: sticky;
-                    top: 0;
-                    z-index: 100;
-                }
-
-                .header-content {
-                    max-width: 1200px;
-                    margin: 0 auto;
-                    padding: 20px 24px;
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                }
-
-                .header-left {
-                    display: flex;
-                    align-items: center;
-                    gap: 16px;
-                }
-
-                .app-icon {
-                    width: 48px;
-                    height: 48px;
-                    background: linear-gradient(135deg, #3b82f6, #8b5cf6);
-                    border-radius: 12px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    color: white;
-                }
-
-                .header-title h1 {
-                    font-size: 24px;
-                    font-weight: 700;
-                    margin-bottom: 2px;
-                    background: linear-gradient(135deg, #ffffff, #a1a1aa);
-                    -webkit-background-clip: text;
-                    -webkit-text-fill-color: transparent;
-                    background-clip: text;
-                }
-
-                .header-title p {
-                    font-size: 14px;
-                    color: #71717a;
-                }
-
-                /* Button Styles */
-                .btn-secondary {
-                    background: rgba(39, 39, 42, 0.8);
-                    border: 1px solid rgba(255, 255, 255, 0.12);
-                    color: #ffffff;
-                    padding: 10px 16px;
-                    border-radius: 8px;
-                    font-size: 14px;
-                    font-weight: 500;
-                    cursor: pointer;
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
-                    transition: all 0.2s;
-                }
-
-                .btn-secondary:hover {
-                    background: rgba(63, 63, 70, 0.8);
-                    border-color: rgba(255, 255, 255, 0.2);
-                    transform: translateY(-1px);
-                }
-
-                /* Stats Section */
-                .stats-section {
-                    max-width: 1200px;
-                    margin: 0 auto;
-                    padding: 32px 24px;
-                }
-
-                .stats-grid {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-                    gap: 20px;
-                }
-
-                .stat-card {
-                    background: rgba(39, 39, 42, 0.5);
-                    border: 1px solid rgba(255, 255, 255, 0.08);
-                    border-radius: 16px;
-                    padding: 24px;
-                    display: flex;
-                    align-items: center;
-                    gap: 16px;
-                    transition: all 0.3s;
-                    backdrop-filter: blur(10px);
-                }
-
-                .stat-card:hover {
-                    background: rgba(39, 39, 42, 0.8);
-                    border-color: rgba(255, 255, 255, 0.12);
-                    transform: translateY(-2px);
-                    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
-                }
-
-                .stat-icon {
-                    width: 48px;
-                    height: 48px;
-                    border-radius: 12px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    flex-shrink: 0;
-                }
-
-                .stat-icon-primary {
-                    background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-                    color: white;
-                }
-
-                .stat-icon-success {
-                    background: linear-gradient(135deg, #10b981, #059669);
-                    color: white;
-                }
-
-                .stat-icon-warning {
-                    background: linear-gradient(135deg, #f59e0b, #d97706);
-                    color: white;
-                }
-
-                .stat-value {
-                    font-size: 32px;
-                    font-weight: 700;
-                    color: #ffffff;
-                    line-height: 1;
-                }
-
-                .stat-label {
-                    font-size: 14px;
-                    color: #a1a1aa;
-                    font-weight: 500;
-                }
-
-                /* Controls Section */
-                .controls-section {
-                    max-width: 1200px;
-                    margin: 0 auto;
-                    padding: 0 24px 24px;
-                }
-
-                .controls-bar {
-                    display: flex;
-                    gap: 16px;
-                    align-items: center;
-                    flex-wrap: wrap;
-                }
-
-                .search-container {
-                    position: relative;
-                    flex: 1;
-                    min-width: 300px;
-                }
-
-                .search-icon {
-                    position: absolute;
-                    left: 14px;
-                    top: 50%;
-                    transform: translateY(-50%);
-                    color: #71717a;
-                    pointer-events: none;
-                }
-
-                .search-input {
-                    width: 100%;
-                    background: rgba(39, 39, 42, 0.6);
-                    border: 1px solid rgba(255, 255, 255, 0.08);
-                    border-radius: 12px;
-                    padding: 12px 16px 12px 44px;
-                    font-size: 14px;
-                    color: #ffffff;
-                    transition: all 0.2s;
-                }
-
-                .search-input:focus {
-                    outline: none;
-                    border-color: #3b82f6;
-                    background: rgba(39, 39, 42, 0.8);
-                    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-                }
-
-                .search-input::placeholder {
-                    color: #71717a;
-                }
-
-                .select-input {
-                    background: rgba(39, 39, 42, 0.6);
-                    border: 1px solid rgba(255, 255, 255, 0.08);
-                    border-radius: 8px;
-                    padding: 10px 14px;
-                    font-size: 14px;
-                    color: #ffffff;
-                    cursor: pointer;
-                    min-width: 160px;
-                }
-
-                .select-input:focus {
-                    outline: none;
-                    border-color: #3b82f6;
-                    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-                }
-
-                /* Table Section */
-                .table-section {
-                    max-width: 1200px;
-                    margin: 0 auto;
-                    padding: 0 24px 40px;
-                }
-
-                .table-container {
-                    background: rgba(39, 39, 42, 0.4);
-                    border: 1px solid rgba(255, 255, 255, 0.08);
-                    border-radius: 16px;
-                    overflow: hidden;
-                    backdrop-filter: blur(10px);
-                }
-
-                .table-header {
-                    padding: 24px;
-                    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                }
-
-                .table-header h2 {
-                    font-size: 20px;
-                    font-weight: 600;
-                    color: #ffffff;
-                }
-
-                .table-meta {
-                    font-size: 14px;
-                    color: #71717a;
-                }
-
-                .table-wrapper {
-                    position: relative;
-                }
-
-                .members-table {
-                    width: 100%;
-                    border-collapse: collapse;
-                }
-
-                .members-table thead {
-                    background: rgba(24, 24, 27, 0.8);
-                }
-
-                .members-table th {
-                    padding: 0;
-                    text-align: left;
-                    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-                }
-
-                .th-button {
-                    width: 100%;
-                    background: none;
-                    border: none;
-                    color: #a1a1aa;
-                    font-size: 12px;
-                    font-weight: 600;
-                    text-transform: uppercase;
-                    letter-spacing: 0.5px;
-                    padding: 16px 20px;
-                    cursor: pointer;
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
-                    transition: all 0.2s;
-                }
-
-                .th-button:hover {
-                    color: #ffffff;
-                    background: rgba(255, 255, 255, 0.05);
-                }
-
-                .sort-icon {
-                    opacity: 0.5;
-                    transition: opacity 0.2s;
-                }
-
-                .th-button:hover .sort-icon {
-                    opacity: 1;
-                }
-
-                .members-table td {
-                    padding: 20px;
-                    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-                    vertical-align: top;
-                }
-
-                .members-table tr {
-                    transition: all 0.2s;
-                }
-
-                .members-table tbody tr:hover {
-                    background: rgba(255, 255, 255, 0.03);
-                }
-
-                /* Member Cell Styles */
-                .member-cell {
-                    display: flex;
-                    align-items: center;
-                    gap: 12px;
-                }
-
-                .member-avatar {
-                    width: 44px;
-                    height: 44px;
-                    border-radius: 12px;
-                    background: linear-gradient(135deg, #3b82f6, #8b5cf6);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    color: white;
-                    font-weight: 600;
-                    font-size: 16px;
-                    flex-shrink: 0;
-                }
-
-                .member-info {
-                    flex: 1;
-                    min-width: 0;
-                }
-
-                .member-name {
-                    font-size: 16px;
-                    font-weight: 600;
-                    color: #ffffff;
-                    margin-bottom: 2px;
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
-                }
-
-                .member-username {
-                    color: #3b82f6;
-                    font-weight: 500;
-                }
-
-                .member-email {
-                    font-size: 14px;
-                    color: #71717a;
-                    overflow: hidden;
-                    text-overflow: ellipsis;
-                    white-space: nowrap;
-                }
-
-                /* Custom Fields */
-                .custom-fields {
-                    max-width: 300px;
-                }
-
-                .field-item {
-                    margin-bottom: 8px;
-                    display: flex;
-                    flex-direction: column;
-                    gap: 2px;
-                }
-
-                .field-item:last-child {
-                    margin-bottom: 0;
-                }
-
-                .field-label {
-                    font-size: 12px;
-                    color: #71717a;
-                    font-weight: 500;
-                    text-transform: uppercase;
-                    letter-spacing: 0.5px;
-                }
-
-                .field-value {
-                    font-size: 14px;
-                    color: #ffffff;
-                    line-height: 1.4;
-                }
-
-                .field-status {
-                    display: inline-flex;
-                    align-items: center;
-                    gap: 6px;
-                    padding: 6px 10px;
-                    background: rgba(245, 158, 11, 0.1);
-                    border: 1px solid rgba(245, 158, 11, 0.2);
-                    border-radius: 6px;
-                    font-size: 12px;
-                    color: #fbbf24;
-                }
-
-                .no-fields {
-                    color: #71717a;
-                    font-style: italic;
-                    font-size: 14px;
-                }
-
-                /* Date Styles */
-                .date-cell {
-                    text-align: right;
-                    color: #a1a1aa;
-                    font-size: 14px;
-                    white-space: nowrap;
-                }
-
-                /* Loading and Empty States */
-                .loading-state, .empty-state {
-                    display: flex;
-                    flex-direction: column;
-                    align-items: center;
-                    justify-content: center;
-                    padding: 60px 20px;
-                    text-align: center;
-                }
-
-                .loading-spinner {
-                    width: 32px;
-                    height: 32px;
-                    border: 3px solid rgba(255, 255, 255, 0.1);
-                    border-radius: 50%;
-                    border-top-color: #3b82f6;
-                    animation: spin 1s ease-in-out infinite;
-                    margin-bottom: 16px;
-                }
-
-                @keyframes spin {
-                    to { transform: rotate(360deg); }
-                }
-
-                .empty-icon {
-                    margin-bottom: 16px;
-                    color: #71717a;
-                }
-
-                .empty-state h3 {
-                    font-size: 18px;
-                    color: #ffffff;
-                    margin-bottom: 8px;
-                }
-
-                .empty-state p {
-                    color: #71717a;
-                    font-size: 14px;
-                }
-
-                /* Responsive Design */
-                @media (max-width: 768px) {
-                    .header-content {
-                        flex-direction: column;
-                        gap: 16px;
-                        align-items: stretch;
-                    }
-
-                    .stats-grid {
-                        grid-template-columns: 1fr;
-                    }
-
-                    .controls-bar {
-                        flex-direction: column;
-                        align-items: stretch;
-                    }
-
-                    .search-container {
-                        min-width: auto;
-                    }
-
-                    .table-container {
-                        border-radius: 12px;
-                        margin: 0 8px;
-                    }
-
-                    .members-table {
-                        font-size: 14px;
-                    }
-
-                    .members-table td {
-                        padding: 16px;
-                    }
-
-                    .member-cell {
-                        flex-direction: column;
-                        align-items: flex-start;
-                        gap: 8px;
-                    }
-
-                    .custom-fields {
-                        max-width: none;
-                    }
-                }
-
-                /* Column Widths */
-                .col-member { width: 35%; }
-                .col-custom-fields { width: 45%; }
-                .col-joined { width: 20%; }
-
-                @media (max-width: 768px) {
-                    .col-member, .col-custom-fields, .col-joined { 
-                        width: auto; 
-                    }
-                }
-            </style>
+            ${this.getStyles()}
         `;
     }
 
+    changeCompany() {
+        localStorage.removeItem('whop_company_id');
+        window.location.href = '/';
+    }
+
+    async loadMembers() {
+        this.setLoading(true);
+        
+        try {
+            console.log(`🔍 Loading members for company: ${this.companyId}`);
+            
+            // Use the dynamic company ID instead of hardcoded one
+            const response = await fetch(`/api/members/${this.companyId}`);
+            
+            console.log('📡 Response status:', response.status);
+            console.log('📡 Response headers:', response.headers.get('content-type'));
+            
+            if (!response.ok) {
+                if (response.status === 400) {
+                    throw new Error('Invalid company ID provided');
+                } else if (response.status === 404) {
+                    throw new Error('Company not found or no members yet');
+                }
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                const text = await response.text();
+                console.error('❌ Expected JSON but got:', text.substring(0, 200));
+                throw new Error('Server returned HTML instead of JSON - check server logs');
+            }
+            
+            const data = await response.json();
+            console.log('✅ API Response:', data);
+            
+            if (data.success) {
+                this.members = data.members || [];
+                console.log(`📊 Loaded ${this.members.length} members for company ${this.companyId}`);
+                this.filterAndRenderMembers();
+                this.updateStats();
+            } else {
+                console.error('Failed to load members:', data.error);
+                this.showError(`Failed to load members: ${data.error || 'Unknown error'}`);
+            }
+        } catch (error) {
+            console.error('❌ Error loading members:', error);
+            this.showError(`Error loading members: ${error.message}`);
+        } finally {
+            this.setLoading(false);
+        }
+    }
+
+    // Rest of the methods remain the same...
     setupEventListeners() {
-        // Search functionality
         const searchInput = document.getElementById('searchInput');
-        searchInput.addEventListener('input', (e) => {
+        searchInput?.addEventListener('input', (e) => {
             this.searchTerm = e.target.value.toLowerCase();
             this.filterAndRenderMembers();
         });
 
-        // Sort functionality
         const sortSelect = document.getElementById('sortSelect');
-        sortSelect.addEventListener('change', (e) => {
+        sortSelect?.addEventListener('change', (e) => {
             const [field, direction] = e.target.value.split('_');
             this.sortField = field;
             this.sortDirection = direction;
             this.filterAndRenderMembers();
         });
 
-        // Refresh functionality
-        const refreshBtn = document.getElementById('refreshBtn');
-        refreshBtn.addEventListener('click', () => {
-            this.loadMembers();
-        });
-
-        // Sort by column headers
         document.querySelectorAll('[data-sort]').forEach(button => {
             button.addEventListener('click', (e) => {
                 const field = e.currentTarget.dataset.sort;
@@ -756,47 +376,8 @@ class MemberDirectory {
 
     updateSortSelect() {
         const sortSelect = document.getElementById('sortSelect');
-        sortSelect.value = `${this.sortField}_${this.sortDirection}`;
-    }
-
-    async loadMembers() {
-        this.setLoading(true);
-        
-        try {
-            console.log('🔍 Loading members from API...');
-            const response = await fetch('/api/members/biz_6GuEa8lMu5p9yl');
-            
-            console.log('📡 Response status:', response.status);
-            console.log('📡 Response headers:', response.headers.get('content-type'));
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
-            const contentType = response.headers.get('content-type');
-            if (!contentType || !contentType.includes('application/json')) {
-                const text = await response.text();
-                console.error('❌ Expected JSON but got:', text.substring(0, 200));
-                throw new Error('Server returned HTML instead of JSON - check server logs');
-            }
-            
-            const data = await response.json();
-            console.log('✅ API Response:', data);
-            
-            if (data.success) {
-                this.members = data.members || [];
-                console.log(`📊 Loaded ${this.members.length} members`);
-                this.filterAndRenderMembers();
-                this.updateStats();
-            } else {
-                console.error('Failed to load members:', data.error);
-                this.showError(`Failed to load members: ${data.error || 'Unknown error'}`);
-            }
-        } catch (error) {
-            console.error('❌ Error loading members:', error);
-            this.showError(`Error loading members: ${error.message}`);
-        } finally {
-            this.setLoading(false);
+        if (sortSelect) {
+            sortSelect.value = `${this.sortField}_${this.sortDirection}`;
         }
     }
 
@@ -806,11 +387,11 @@ class MemberDirectory {
         const tableBody = document.getElementById('membersTableBody');
         
         if (loading) {
-            loadingState.style.display = 'flex';
-            tableBody.style.display = 'none';
+            if (loadingState) loadingState.style.display = 'flex';
+            if (tableBody) tableBody.style.display = 'none';
         } else {
-            loadingState.style.display = 'none';
-            tableBody.style.display = 'table-row-group';
+            if (loadingState) loadingState.style.display = 'none';
+            if (tableBody) tableBody.style.display = 'table-row-group';
         }
     }
 
@@ -818,75 +399,29 @@ class MemberDirectory {
         const tableBody = document.getElementById('membersTableBody');
         const emptyState = document.getElementById('emptyState');
         
-        tableBody.style.display = 'table-row-group';
-        emptyState.style.display = 'none';
-        
-        tableBody.innerHTML = `
-            <tr>
-                <td colspan="3" class="error-cell">
-                    <div style="text-align: center; padding: 40px;">
-                        <div style="color: #ef4444; font-size: 18px; margin-bottom: 12px;">⚠️ ${this.escapeHtml(message)}</div>
-                        <div style="color: #71717a; font-size: 14px; margin-bottom: 20px;">
-                            Check the browser console for more details
-                        </div>
-                        <button onclick="memberDirectory.testConnection()" class="btn-secondary" style="margin-right: 12px;">
-                            Test API Connection
-                        </button>
-                        <button onclick="memberDirectory.loadMembers()" class="btn-secondary">
-                            Retry
-                        </button>
-                    </div>
-                </td>
-            </tr>
-        `;
-    }
-
-    async testConnection() {
-        console.log('🧪 Testing API connection...');
-        
-        try {
-            // Test basic API endpoint
-            const response = await fetch('/api/test');
-            console.log('📡 Basic API test response:', response.status);
+        if (tableBody) {
+            tableBody.style.display = 'table-row-group';
+            if (emptyState) emptyState.style.display = 'none';
             
-            if (response.ok) {
-                const data = await response.text();
-                console.log('✅ Basic API working:', data);
-                
-                // Test members endpoint specifically
-                console.log('🔍 Testing members endpoint...');
-                const membersResponse = await fetch('/api/members/biz_6GuEa8lMu5p9yl');
-                console.log('📡 Members API response:', membersResponse.status, membersResponse.statusText);
-                
-                const responseText = await membersResponse.text();
-                console.log('📄 Raw response:', responseText.substring(0, 500));
-                
-                if (responseText.startsWith('<')) {
-                    console.error('❌ Server is returning HTML instead of JSON');
-                    alert('❌ Server error: The API is returning HTML instead of JSON. Check server logs for details.');
-                } else {
-                    console.log('✅ Response looks like JSON');
-                    try {
-                        const data = JSON.parse(responseText);
-                        console.log('✅ Valid JSON response:', data);
-                        alert('✅ API connection successful! Try refreshing the page.');
-                    } catch (e) {
-                        console.error('❌ Invalid JSON:', e);
-                        alert('❌ API returned invalid JSON');
-                    }
-                }
-            } else {
-                console.error('❌ Basic API test failed:', response.status);
-                alert(`❌ API connection failed: ${response.status} ${response.statusText}`);
-            }
-        } catch (error) {
-            console.error('❌ Connection test failed:', error);
-            alert(`❌ Connection test failed: ${error.message}`);
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="3" class="error-cell">
+                        <div style="text-align: center; padding: 40px;">
+                            <div style="color: #ef4444; font-size: 18px; margin-bottom: 12px;">⚠️ ${this.escapeHtml(message)}</div>
+                            <div style="color: #71717a; font-size: 14px; margin-bottom: 20px;">
+                                Company ID: ${this.companyId}
+                            </div>
+                            <button onclick="memberDirectory.loadMembers()" class="btn-secondary">
+                                Retry
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
         }
     }
 
     filterAndRenderMembers() {
-        // Filter members based on search term
         this.filteredMembers = this.members.filter(member => {
             if (!this.searchTerm) return true;
             
@@ -900,7 +435,6 @@ class MemberDirectory {
             return searchFields.includes(this.searchTerm);
         });
 
-        // Sort members
         this.filteredMembers.sort((a, b) => {
             let aValue, bValue;
             
@@ -932,6 +466,8 @@ class MemberDirectory {
         const tableBody = document.getElementById('membersTableBody');
         const emptyState = document.getElementById('emptyState');
         
+        if (!tableBody || !emptyState) return;
+        
         if (this.filteredMembers.length === 0) {
             tableBody.style.display = 'none';
             emptyState.style.display = 'flex';
@@ -955,7 +491,6 @@ class MemberDirectory {
             year: 'numeric'
         }) : 'Unknown';
         
-        // Generate initials for avatar
         const initials = primaryName.slice(0, 2).toUpperCase();
         
         return `
@@ -988,7 +523,6 @@ class MemberDirectory {
             return '<div class="no-fields">No custom fields</div>';
         }
 
-        // Handle status/error messages
         if (customFields.status || customFields.error) {
             const isError = customFields.error;
             const message = customFields.status || customFields.error;
@@ -1026,7 +560,6 @@ class MemberDirectory {
                 displayValue = 'Not provided';
             }
 
-            // Limit long values
             if (typeof displayValue === 'string' && displayValue.length > 100) {
                 displayValue = displayValue.substring(0, 100) + '...';
             }
@@ -1053,9 +586,13 @@ class MemberDirectory {
         
         const activeMembers = this.members.filter(member => member.status === 'active').length;
 
-        document.getElementById('totalMembers').textContent = totalMembers;
-        document.getElementById('newThisMonth').textContent = newThisMonth;
-        document.getElementById('activeMembers').textContent = activeMembers;
+        const totalElement = document.getElementById('totalMembers');
+        const newElement = document.getElementById('newThisMonth');
+        const activeElement = document.getElementById('activeMembers');
+
+        if (totalElement) totalElement.textContent = totalMembers;
+        if (newElement) newElement.textContent = newThisMonth;
+        if (activeElement) activeElement.textContent = activeMembers;
     }
 
     updateMemberCount() {
@@ -1063,10 +600,12 @@ class MemberDirectory {
         const total = this.members.length;
         const memberCount = document.getElementById('memberCount');
         
-        if (count === total) {
-            memberCount.textContent = `${total} member${total !== 1 ? 's' : ''}`;
-        } else {
-            memberCount.textContent = `${count} of ${total} member${total !== 1 ? 's' : ''}`;
+        if (memberCount) {
+            if (count === total) {
+                memberCount.textContent = `${total} member${total !== 1 ? 's' : ''}`;
+            } else {
+                memberCount.textContent = `${count} of ${total} member${total !== 1 ? 's' : ''}`;
+            }
         }
     }
 
@@ -1080,9 +619,93 @@ class MemberDirectory {
         };
         return text.replace(/[&<>"']/g, m => map[m]);
     }
+
+    // Include all the CSS styles here (same as before but can be moved to separate file)
+    getStyles() {
+        return `<style>
+            /* All the existing CSS styles remain the same */
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Inter', sans-serif; background: #0a0a0a; color: #ffffff; line-height: 1.5; overflow-x: hidden; }
+            .app-container { min-height: 100vh; background: linear-gradient(180deg, #0a0a0a 0%, #111111 100%); }
+            .stats-section { max-width: 1200px; margin: 0 auto; padding: 32px 24px; }
+            .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
+            .stat-card { background: rgba(39, 39, 42, 0.5); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; padding: 24px; display: flex; align-items: center; gap: 16px; transition: all 0.3s; backdrop-filter: blur(10px); }
+            .stat-card:hover { background: rgba(39, 39, 42, 0.8); border-color: rgba(255, 255, 255, 0.12); transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3); }
+            .stat-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+            .stat-icon-primary { background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; }
+            .stat-icon-success { background: linear-gradient(135deg, #10b981, #059669); color: white; }
+            .stat-icon-warning { background: linear-gradient(135deg, #f59e0b, #d97706); color: white; }
+            .stat-value { font-size: 32px; font-weight: 700; color: #ffffff; line-height: 1; }
+            .stat-label { font-size: 14px; color: #a1a1aa; font-weight: 500; }
+            .controls-section { max-width: 1200px; margin: 0 auto; padding: 0 24px 24px; }
+            .controls-bar { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+            .search-container { position: relative; flex: 1; min-width: 300px; }
+            .search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #71717a; pointer-events: none; }
+            .search-input { width: 100%; background: rgba(39, 39, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 12px 16px 12px 44px; font-size: 14px; color: #ffffff; transition: all 0.2s; }
+            .search-input:focus { outline: none; border-color: #3b82f6; background: rgba(39, 39, 42, 0.8); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+            .search-input::placeholder { color: #71717a; }
+            .select-input { background: rgba(39, 39, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 10px 14px; font-size: 14px; color: #ffffff; cursor: pointer; min-width: 160px; }
+            .select-input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+            .table-section { max-width: 1200px; margin: 0 auto; padding: 0 24px 40px; }
+            .table-container { background: rgba(39, 39, 42, 0.4); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; overflow: hidden; backdrop-filter: blur(10px); }
+            .table-header { padding: 24px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); display: flex; justify-content: space-between; align-items: center; }
+            .table-header h2 { font-size: 20px; font-weight: 600; color: #ffffff; }
+            .table-meta { font-size: 14px; color: #71717a; }
+            .table-wrapper { position: relative; }
+            .members-table { width: 100%; border-collapse: collapse; }
+            .members-table thead { background: rgba(24, 24, 27, 0.8); }
+            .members-table th { padding: 0; text-align: left; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
+            .th-button { width: 100%; background: none; border: none; color: #a1a1aa; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; padding: 16px 20px; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.2s; }
+            .th-button:hover { color: #ffffff; background: rgba(255, 255, 255, 0.05); }
+            .sort-icon { opacity: 0.5; transition: opacity 0.2s; }
+            .th-button:hover .sort-icon { opacity: 1; }
+            .members-table td { padding: 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); vertical-align: top; }
+            .members-table tr { transition: all 0.2s; }
+            .members-table tbody tr:hover { background: rgba(255, 255, 255, 0.03); }
+            .member-cell { display: flex; align-items: center; gap: 12px; }
+            .member-avatar { width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #3b82f6, #8b5cf6); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 16px; flex-shrink: 0; }
+            .member-info { flex: 1; min-width: 0; }
+            .member-name { font-size: 16px; font-weight: 600; color: #ffffff; margin-bottom: 2px; display: flex; align-items: center; gap: 8px; }
+            .member-username { color: #3b82f6; font-weight: 500; }
+            .member-email { font-size: 14px; color: #71717a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+            .custom-fields { max-width: 300px; }
+            .field-item { margin-bottom: 8px; display: flex; flex-direction: column; gap: 2px; }
+            .field-item:last-child { margin-bottom: 0; }
+            .field-label { font-size: 12px; color: #71717a; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+            .field-value { font-size: 14px; color: #ffffff; line-height: 1.4; }
+            .field-status { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.2); border-radius: 6px; font-size: 12px; color: #fbbf24; }
+            .no-fields { color: #71717a; font-style: italic; font-size: 14px; }
+            .date-cell { text-align: right; color: #a1a1aa; font-size: 14px; white-space: nowrap; }
+            .loading-state, .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; text-align: center; }
+            .loading-spinner { width: 32px; height: 32px; border: 3px solid rgba(255, 255, 255, 0.1); border-radius: 50%; border-top-color: #3b82f6; animation: spin 1s ease-in-out infinite; margin-bottom: 16px; }
+            @keyframes spin { to { transform: rotate(360deg); } }
+            .empty-icon { margin-bottom: 16px; color: #71717a; }
+            .empty-state h3 { font-size: 18px; color: #ffffff; margin-bottom: 8px; }
+            .empty-state p { color: #71717a; font-size: 14px; }
+            .col-member { width: 35%; }
+            .col-custom-fields { width: 45%; }
+            .col-joined { width: 20%; }
+            @media (max-width: 768px) {
+                .stats-grid { grid-template-columns: 1fr; }
+                .controls-bar { flex-direction: column; align-items: stretch; }
+                .search-container { min-width: auto; }
+                .table-container { border-radius: 12px; margin: 0 8px; }
+                .members-table { font-size: 14px; }
+                .members-table td { padding: 16px; }
+                .member-cell { flex-direction: column; align-items: flex-start; gap: 8px; }
+                .custom-fields { max-width: none; }
+                .col-member, .col-custom-fields, .col-joined { width: auto; }
+            }
+        </style>`;
+    }
 }
 
-// Initialize the application
+// Initialize the application when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
     window.memberDirectory = new MemberDirectory();
 });
+
+// If DOM is already loaded, initialize immediately
+if (document.readyState !== 'loading') {
+    window.memberDirectory = new MemberDirectory();
+}

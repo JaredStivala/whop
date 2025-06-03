@@ -44,6 +44,12 @@
             opacity: 0.9;
         }
 
+        .company-info {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            margin-top: 10px;
+        }
+
         .stats {
             display: flex;
             justify-content: center;
@@ -236,6 +242,37 @@
         .embed-mode .header h1 {
             font-size: 1.8rem;
         }
+
+        .company-selector {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .company-selector input {
+            padding: 10px 15px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.9);
+            margin-right: 10px;
+            font-size: 14px;
+        }
+
+        .company-selector button {
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .company-selector button:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
     </style>
 </head>
 <body>
@@ -243,6 +280,15 @@
         <div class="header">
             <h1 id="groupName">Member Directory</h1>
             <p>Connect with fellow community members</p>
+            <div class="company-info" id="companyInfo"></div>
+            
+            <!-- Company selector (shown when no company ID) -->
+            <div class="company-selector" id="companySelector" style="display: none;">
+                <p style="margin-bottom: 15px;">Enter your company ID to view the member directory:</p>
+                <input type="text" id="companyInput" placeholder="e.g., biz_abc123..." />
+                <button onclick="setCompanyId()">View Directory</button>
+            </div>
+            
             <div class="stats">
                 <div class="stat-item">
                     <span class="stat-number" id="totalMembers">-</span>
@@ -255,7 +301,7 @@
             </div>
         </div>
 
-        <div class="search-filter">
+        <div class="search-filter" id="searchSection" style="display: none;">
             <input 
                 type="text" 
                 class="search-input" 
@@ -289,12 +335,35 @@
                 this.companyId = this.getCompanyIdFromUrl();
                 this.apiBaseUrl = this.getApiBaseUrl();
                 
+                if (!this.companyId) {
+                    this.showCompanySelector();
+                    return;
+                }
+                
                 this.init();
             }
 
             getCompanyIdFromUrl() {
+                // 1. Check URL path for /directory/:companyId
+                const pathMatch = window.location.pathname.match(/\/directory\/([^\/]+)/);
+                if (pathMatch) {
+                    return pathMatch[1];
+                }
+                
+                // 2. Check URL query parameter ?company=...
                 const urlParams = new URLSearchParams(window.location.search);
-                return urlParams.get('company') || 'demo';
+                const queryCompany = urlParams.get('company') || urlParams.get('companyId');
+                if (queryCompany && queryCompany !== 'demo') {
+                    return queryCompany;
+                }
+                
+                // 3. Check URL hash #company=...
+                const hashMatch = window.location.hash.match(/[#&]company=([^&]+)/);
+                if (hashMatch) {
+                    return hashMatch[1];
+                }
+                
+                return null;
             }
 
             getApiBaseUrl() {
@@ -303,7 +372,34 @@
                 return currentDomain.includes('localhost') ? 'http://localhost:3000' : currentDomain;
             }
 
+            showCompanySelector() {
+                document.getElementById('companySelector').style.display = 'block';
+                document.getElementById('loadingState').style.display = 'none';
+                document.getElementById('companyInfo').textContent = 'Please enter your company ID to continue';
+                
+                // Set up enter key listener
+                document.getElementById('companyInput').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        this.setCompanyIdAndRedirect();
+                    }
+                });
+            }
+
+            setCompanyIdAndRedirect() {
+                const input = document.getElementById('companyInput');
+                const companyId = input.value.trim();
+                
+                if (!companyId) {
+                    alert('Please enter a company ID');
+                    return;
+                }
+                
+                // Redirect to the directory with company ID
+                window.location.href = `${window.location.origin}/directory/${companyId}`;
+            }
+
             async init() {
+                document.getElementById('companyInfo').textContent = `Company: ${this.companyId}`;
                 await this.loadGroupConfig();
                 await this.loadMembers();
                 this.setupEventListeners();
@@ -311,11 +407,15 @@
 
             async loadGroupConfig() {
                 try {
-                    const response = await fetch(`${this.apiBaseUrl}/api/group/${this.companyId}`);
+                    const response = await fetch(`${this.apiBaseUrl}/api/company/${this.companyId}`);
                     if (response.ok) {
                         const data = await response.json();
-                        document.getElementById('groupName').textContent = 
-                            data.group.group_name + ' Directory';
+                        if (data.success && data.company) {
+                            document.getElementById('groupName').textContent = 
+                                `Member Directory`;
+                            document.getElementById('companyInfo').textContent = 
+                                `Company: ${this.companyId} • ${data.company.member_count} members`;
+                        }
                     }
                 } catch (error) {
                     console.error('Error loading group config:', error);
@@ -324,9 +424,15 @@
 
             async loadMembers() {
                 try {
-                    const response = await fetch(`${this.apiBaseUrl}/api/directory/${this.companyId}`);
+                    console.log(`🔍 Loading members for company: ${this.companyId}`);
+                    const response = await fetch(`${this.apiBaseUrl}/api/members/${this.companyId}`);
                     
                     if (!response.ok) {
+                        if (response.status === 400) {
+                            throw new Error('Invalid company ID provided');
+                        } else if (response.status === 404) {
+                            throw new Error('Company not found or no members yet');
+                        }
                         throw new Error('Failed to fetch members');
                     }
 
@@ -340,7 +446,7 @@
                     
                 } catch (error) {
                     console.error('Error loading members:', error);
-                    this.showError();
+                    this.showError(error.message);
                 }
             }
 
@@ -369,15 +475,19 @@
             }
 
             createMemberCard(member) {
-                const name = member.name || 'Anonymous Member';
+                const name = member.name || member.username || 'Anonymous Member';
                 const email = member.email || 'No email provided';
                 const avatar = name.charAt(0).toUpperCase();
                 const joinedDate = new Date(member.joined_at).toLocaleDateString();
                 
                 // Parse waitlist responses
-                const responses = member.waitlist_responses || {};
+                const responses = member.waitlist_responses || member.custom_fields || {};
                 const responseItems = Object.entries(responses)
-                    .filter(([key, value]) => value && value.toString().trim())
+                    .filter(([key, value]) => 
+                        value && 
+                        value.toString().trim() && 
+                        !['status', 'error', 'note', 'raw_indicator', 'raw_length', 'source'].includes(key)
+                    )
                     .map(([key, value]) => `
                         <div class="detail-item">
                             <span class="detail-label">${this.formatLabel(key)}:</span>
@@ -430,9 +540,9 @@
                     this.filteredMembers = [...this.members];
                 } else {
                     this.filteredMembers = this.members.filter(member => {
-                        const name = (member.name || '').toLowerCase();
+                        const name = (member.name || member.username || '').toLowerCase();
                         const email = (member.email || '').toLowerCase();
-                        const responses = JSON.stringify(member.waitlist_responses || {}).toLowerCase();
+                        const responses = JSON.stringify(member.waitlist_responses || member.custom_fields || {}).toLowerCase();
                         
                         return name.includes(term) || 
                                email.includes(term) || 
@@ -447,32 +557,52 @@
                 document.getElementById('loadingState').style.display = 'none';
                 document.getElementById('errorState').style.display = 'none';
                 document.getElementById('noMembersState').style.display = 'none';
+                document.getElementById('searchSection').style.display = 'block';
                 document.getElementById('membersGrid').style.display = 'grid';
             }
 
-            showError() {
+            showError(message) {
                 document.getElementById('loadingState').style.display = 'none';
                 document.getElementById('membersGrid').style.display = 'none';
                 document.getElementById('noMembersState').style.display = 'none';
-                document.getElementById('errorState').style.display = 'block';
+                document.getElementById('searchSection').style.display = 'none';
+                
+                const errorElement = document.getElementById('errorState');
+                errorElement.style.display = 'block';
+                errorElement.innerHTML = `
+                    <h3>Error Loading Directory</h3>
+                    <p>${this.escapeHtml(message)}</p>
+                    <p style="margin-top: 10px; font-size: 14px;">Company ID: ${this.companyId}</p>
+                    <button onclick="location.reload()" style="margin-top: 15px; padding: 8px 16px; background: #dc2626; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                        Retry
+                    </button>
+                `;
             }
 
             showNoMembers() {
                 document.getElementById('loadingState').style.display = 'none';
                 document.getElementById('membersGrid').style.display = 'none';
                 document.getElementById('errorState').style.display = 'none';
+                document.getElementById('searchSection').style.display = 'none';
                 document.getElementById('noMembersState').style.display = 'block';
+            }
+        }
+
+        // Global function for company selector
+        function setCompanyId() {
+            if (window.memberDirectory) {
+                window.memberDirectory.setCompanyIdAndRedirect();
             }
         }
 
         // Initialize the directory when page loads
         document.addEventListener('DOMContentLoaded', () => {
-            new MemberDirectory();
+            window.memberDirectory = new MemberDirectory();
         });
 
         // Auto-refresh every 5 minutes to keep data current
         setInterval(() => {
-            if (window.memberDirectory) {
+            if (window.memberDirectory && window.memberDirectory.companyId) {
                 window.memberDirectory.loadMembers();
             }
         }, 5 * 60 * 1000);

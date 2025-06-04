@@ -56,14 +56,14 @@
     <div id="loadingScreen">
         <div class="loading-spinner"></div>
         <div class="loading-text">Loading Member Directory</div>
-        <div class="loading-subtext">Detecting company context...</div>
+        <div class="loading-subtext">Detecting company...</div>
     </div>
 
-    <!-- Main App Container (will be populated by JavaScript) -->
+    <!-- Main App Container -->
     <div id="app"></div>
 
     <script>
-        // Member Directory Application - Company Name Detection
+        // SIMPLIFIED Member Directory - Direct Company Name Detection
         class MemberDirectory {
             constructor() {
                 this.members = [];
@@ -81,15 +81,15 @@
                 try {
                     console.log('🚀 Initializing Member Directory...');
                     
-                    // Try to detect company ID automatically
-                    this.companyId = await this.detectCompanyId();
+                    // SIMPLIFIED: Just get company name from URL
+                    this.companyId = this.getCompanyFromUrl();
                     
                     if (!this.companyId) {
                         this.showCompanyIdError();
                         return;
                     }
                     
-                    console.log(`✅ Detected company ID: ${this.companyId}`);
+                    console.log(`✅ Using company: ${this.companyId}`);
                     this.createModernUI();
                     await this.loadMembers();
                     this.setupEventListeners();
@@ -101,216 +101,48 @@
                 }
             }
 
-            // Auto-detect company ID from multiple sources
-            async detectCompanyId() {
-                console.log('🔍 Attempting to detect company ID...');
-                
-                // Method 1: Check URL path for /directory/:companyId
-                const pathMatch = window.location.pathname.match(/\/directory\/([^\/]+)/);
-                if (pathMatch) {
-                    console.log(`✅ Found company ID in URL path: ${pathMatch[1]}`);
-                    return pathMatch[1];
-                }
-                
-                // Method 2: Check URL query parameter ?company=...
-                const urlParams = new URLSearchParams(window.location.search);
-                const queryCompany = urlParams.get('company') || urlParams.get('companyId');
-                if (queryCompany) {
-                    console.log(`✅ Found company ID in query params: ${queryCompany}`);
-                    return queryCompany;
-                }
-                
-                // Method 3: Check URL hash #company=...
-                const hashMatch = window.location.hash.match(/[#&]company=([^&]+)/);
-                if (hashMatch) {
-                    console.log(`✅ Found company ID in hash: ${hashMatch[1]}`);
-                    return hashMatch[1];
-                }
-                
-                // Method 4: Try to detect from Whop context (when running inside Whop)
-                const whopCompanyId = await this.detectWhopCompanyId();
-                if (whopCompanyId) {
-                    console.log(`✅ Found company ID from Whop context: ${whopCompanyId}`);
-                    return whopCompanyId;
-                }
-                
-                // Method 5: Check localStorage (for persistence)
-                const storedCompanyId = localStorage.getItem('whop_company_id');
-                if (storedCompanyId && storedCompanyId !== 'null' && storedCompanyId !== 'undefined') {
-                    console.log(`✅ Found company ID in localStorage: ${storedCompanyId}`);
-                    return storedCompanyId;
-                }
-                
-                console.log('❌ No company ID detected from any source');
-                return null;
-            }
-
-            // UPDATED: Detect company ID when running inside Whop with name resolution
-            async detectWhopCompanyId() {
-                try {
-                    // Method 1: Try to get from window.location when inside Whop iframe
-                    if (window.parent !== window) {
-                        try {
-                            const parentUrl = document.referrer || window.parent.location.href;
-                            console.log('🔍 Checking parent URL:', parentUrl);
-                            
-                            // Extract company name from Whop URLs like whop.com/companyname/...
-                            const whopUrlMatch = parentUrl.match(/whop\.com\/([^\/\?#]+)/);
-                            if (whopUrlMatch) {
-                                const companyName = whopUrlMatch[1];
-                                console.log(`🔍 Extracted company name from URL: ${companyName}`);
-                                
-                                // Skip common non-company paths
-                                const skipPaths = ['app', 'apps', 'api', 'auth', 'login', 'signup', 'dashboard', 'admin', 'www'];
-                                if (!skipPaths.includes(companyName.toLowerCase())) {
-                                    // Try to resolve company name to company ID via API
-                                    const companyId = await this.resolveCompanyNameToId(companyName);
-                                    if (companyId) {
-                                        return companyId;
-                                    }
-                                }
-                            }
-                        } catch (error) {
-                            console.warn('Cannot access parent URL due to CORS:', error);
-                        }
-                    }
-                    
-                    // Method 2: Check current page URL for whop.com/companyname pattern
-                    const currentUrl = window.location.href;
-                    console.log('🔍 Checking current URL for company context:', currentUrl);
-                    
-                    const whopContextMatch = currentUrl.match(/whop\.com\/([^\/\?#]+)/);
-                    if (whopContextMatch) {
-                        const companyName = whopContextMatch[1];
-                        console.log(`🔍 Found company name in current URL: ${companyName}`);
-                        
-                        // Skip common non-company paths
-                        const skipPaths = ['app', 'apps', 'api', 'auth', 'login', 'signup', 'dashboard', 'admin', 'www'];
-                        if (!skipPaths.includes(companyName.toLowerCase())) {
-                            const companyId = await this.resolveCompanyNameToId(companyName);
-                            if (companyId) {
-                                return companyId;
-                            }
-                        }
-                    }
-                    
-                    // Method 3: Check if Whop SDK is available (fallback)
-                    if (window.whop || window.WhopSDK) {
-                        console.log('🔍 Whop SDK detected, trying to get company info...');
-                        try {
-                            const companyInfo = await window.whop?.getCompany?.();
-                            if (companyInfo?.id) {
-                                return companyInfo.id;
-                            }
-                        } catch (error) {
-                            console.warn('Error getting company from Whop SDK:', error);
-                        }
-                    }
-                    
-                    // Method 4: Try to auto-detect from our own API (get all companies and use the first one if only one exists)
+            // SIMPLIFIED: Extract company name directly from URL
+            getCompanyFromUrl() {
+                // Check if we're in an iframe and get the parent URL
+                if (window.parent !== window && document.referrer) {
                     try {
-                        const response = await fetch('/api/companies');
-                        if (response.ok) {
-                            const data = await response.json();
-                            if (data.success && data.companies && data.companies.length === 1) {
-                                console.log(`✅ Auto-detected single company: ${data.companies[0].id}`);
-                                return data.companies[0].id;
-                            }
+                        const parentUrl = document.referrer;
+                        console.log('🔍 Checking parent URL:', parentUrl);
+                        
+                        // Extract from whop.com/{company}/...
+                        const match = parentUrl.match(/whop\.com\/([^\/]+)/);
+                        if (match) {
+                            const companyName = match[1];
+                            console.log(`✅ Found company from parent URL: ${companyName}`);
+                            
+                            // Save to localStorage for persistence
+                            localStorage.setItem('whop_company_id', companyName);
+                            return companyName;
                         }
                     } catch (error) {
-                        console.warn('Could not auto-detect from companies API:', error);
+                        console.warn('Could not access parent URL:', error);
                     }
-                    
-                } catch (error) {
-                    console.warn('Error detecting Whop company ID:', error);
                 }
                 
-                return null;
-            }
-
-            // NEW: Helper function to resolve company name to ID via API
-            async resolveCompanyNameToId(companyName) {
-                try {
-                    console.log(`🔍 Resolving company name "${companyName}" via API`);
-                    
-                    // Call our API to resolve the company name
-                    const response = await fetch(`/api/resolve-company/${encodeURIComponent(companyName)}`);
-                    if (response.ok) {
-                        const data = await response.json();
-                        if (data.success && data.company_id) {
-                            console.log(`✅ API resolved: ${companyName} -> ${data.company_id}`);
-                            return data.company_id;
-                        }
-                    }
-                    
-                    // Fallback: try to find the company in the companies list
-                    const companiesResponse = await fetch('/api/companies');
-                    if (companiesResponse.ok) {
-                        const companiesData = await companiesResponse.json();
-                        if (companiesData.success && companiesData.companies) {
-                            // Look for a company with matching route or name
-                            const company = companiesData.companies.find(c => 
-                                c.route === companyName || 
-                                c.name?.toLowerCase() === companyName.toLowerCase() ||
-                                c.title?.toLowerCase() === companyName.toLowerCase()
-                            );
-                            if (company) {
-                                console.log(`✅ Found company match: ${company.name} -> ${company.id}`);
-                                return company.id;
-                            }
-                        }
-                    }
-                    
-                } catch (error) {
-                    console.warn('Error resolving company name via API:', error);
+                // Check current URL
+                const currentUrl = window.location.href;
+                const currentMatch = currentUrl.match(/whop\.com\/([^\/]+)/);
+                if (currentMatch) {
+                    const companyName = currentMatch[1];
+                    console.log(`✅ Found company from current URL: ${companyName}`);
+                    localStorage.setItem('whop_company_id', companyName);
+                    return companyName;
                 }
                 
-                return null;
-            }
-
-            // Try to resolve a company name/route to a company ID
-            async resolveCompanyId(companyNameOrRoute) {
-                try {
-                    // If it already looks like a company ID, return it
-                    if (companyNameOrRoute.startsWith('biz_')) {
-                        return companyNameOrRoute;
-                    }
-                    
-                    // Try to resolve via our new API endpoint
-                    const response = await fetch(`/api/resolve-company/${encodeURIComponent(companyNameOrRoute)}`);
-                    if (response.ok) {
-                        const data = await response.json();
-                        if (data.success && data.company_id) {
-                            console.log(`✅ API resolved: ${companyNameOrRoute} -> ${data.company_id}`);
-                            return data.company_id;
-                        }
-                    }
-                    
-                    // Fallback: try to find the company by checking our companies API
-                    const companiesResponse = await fetch('/api/companies');
-                    if (companiesResponse.ok) {
-                        const companiesData = await companiesResponse.json();
-                        if (companiesData.success && companiesData.companies) {
-                            // Look for a company with matching route or name
-                            const company = companiesData.companies.find(c => 
-                                c.route === companyNameOrRoute || 
-                                c.name?.toLowerCase() === companyNameOrRoute.toLowerCase() ||
-                                c.title?.toLowerCase() === companyNameOrRoute.toLowerCase()
-                            );
-                            if (company) {
-                                console.log(`✅ Found company match: ${company.name} -> ${company.id}`);
-                                return company.id;
-                            }
-                        }
-                    }
-                    
-                    console.log(`❌ Could not resolve: ${companyNameOrRoute}`);
-                    return null;
-                    
-                } catch (error) {
-                    console.warn('Error resolving company:', error);
-                    return null;
+                // Check localStorage as fallback
+                const stored = localStorage.getItem('whop_company_id');
+                if (stored && stored !== 'null' && stored !== 'undefined') {
+                    console.log(`✅ Found company from storage: ${stored}`);
+                    return stored;
                 }
+                
+                console.log('❌ No company found');
+                return null;
             }
 
             showCompanyIdError() {
@@ -319,17 +151,17 @@
                     <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; background: #0a0a0a; color: white; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
                         <div style="text-align: center; max-width: 600px; padding: 40px;">
                             <div style="font-size: 64px; margin-bottom: 20px;">🏢</div>
-                            <h1 style="font-size: 32px; margin-bottom: 16px;">Company ID Required</h1>
+                            <h1 style="font-size: 32px; margin-bottom: 16px;">Company Not Detected</h1>
                             <p style="font-size: 18px; color: #888; margin-bottom: 32px;">
-                                Could not automatically detect your company ID. Please enter it manually below.
+                                Could not automatically detect your company from the URL. Please enter your company name manually.
                             </p>
                             
                             <div style="background: rgba(39, 39, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 24px; margin-bottom: 32px; text-align: left;">
-                                <h3 style="margin-bottom: 16px; color: #fff;">How to find your company ID:</h3>
+                                <h3 style="margin-bottom: 16px; color: #fff;">How it works:</h3>
                                 <ul style="color: #ccc; line-height: 1.6;">
-                                    <li><strong>Check your Whop URL:</strong> Look for the company part in your Whop dashboard URL</li>
-                                    <li><strong>Ask your admin:</strong> Your community administrator should know the company ID</li>
-                                    <li><strong>Format:</strong> Company IDs typically start with "biz_"</li>
+                                    <li><strong>Your Whop URL:</strong> whop.com/<strong>jaredstivala</strong>/app-name</li>
+                                    <li><strong>Company name:</strong> "jaredstivala"</li>
+                                    <li><strong>We use this directly</strong> as your company identifier</li>
                                 </ul>
                             </div>
                             
@@ -337,7 +169,7 @@
                                 <input 
                                     type="text" 
                                     id="companyIdInput" 
-                                    placeholder="Enter company ID (e.g., biz_...)" 
+                                    placeholder="Enter company name (e.g. jaredstivala)" 
                                     style="flex: 1; padding: 12px 16px; background: rgba(39, 39, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; color: white; font-size: 14px;"
                                 />
                                 <button 
@@ -348,30 +180,24 @@
                                 </button>
                             </div>
                             
-                            <button 
-                                onclick="memberDirectory.retryAutoDetection()" 
-                                style="margin-top: 16px; padding: 8px 16px; background: rgba(39, 39, 42, 0.8); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 6px; color: white; font-size: 12px; cursor: pointer;"
-                            >
-                                🔄 Try Auto-Detection Again
-                            </button>
-                            
                             <p style="font-size: 14px; color: #666; margin-top: 24px;">
-                                Having trouble? Contact your community administrator for help.
+                                Enter just the company name from your Whop URL (e.g. "jaredstivala", not "biz_...")
                             </p>
                         </div>
                     </div>
                 `;
-            }
-
-            async retryAutoDetection() {
-                console.log('🔄 Retrying auto-detection...');
-                this.companyId = await this.detectCompanyId();
-                if (this.companyId) {
-                    console.log(`✅ Auto-detection successful: ${this.companyId}`);
-                    this.init();
-                } else {
-                    alert('Still could not detect company ID automatically. Please enter it manually.');
-                }
+                
+                // Add enter key listener
+                setTimeout(() => {
+                    const input = document.getElementById('companyIdInput');
+                    if (input) {
+                        input.addEventListener('keypress', (e) => {
+                            if (e.key === 'Enter') {
+                                this.setCompanyId();
+                            }
+                        });
+                    }
+                }, 100);
             }
 
             setCompanyId() {
@@ -379,7 +205,7 @@
                 const companyId = input.value.trim();
                 
                 if (!companyId) {
-                    alert('Please enter a company ID');
+                    alert('Please enter a company name');
                     return;
                 }
                 
@@ -387,7 +213,7 @@
                 localStorage.setItem('whop_company_id', companyId);
                 this.companyId = companyId;
                 
-                // Restart the app with the new company ID
+                // Restart the app
                 this.init();
             }
 
@@ -546,7 +372,7 @@
                                             </svg>
                                         </div>
                                         <h3>No members found</h3>
-                                        <p>Members will appear here once they join your community and trigger webhooks!</p>
+                                        <p>Members will appear here once they join your community!</p>
                                     </div>
                                 </div>
                             </div>
@@ -560,7 +386,7 @@
             changeCompany() {
                 localStorage.removeItem('whop_company_id');
                 this.companyId = null;
-                this.init();
+                this.showCompanyIdError();
             }
 
             async loadMembers() {
@@ -569,32 +395,12 @@
                 try {
                     console.log(`🔍 Loading members for company: ${this.companyId}`);
                     
-                    // First try to load company info
-                    try {
-                        const companyResponse = await fetch(`/api/company/${this.companyId}`);
-                        if (companyResponse.ok) {
-                            const companyData = await companyResponse.json();
-                            if (companyData.success && companyData.company) {
-                                const info = `${companyData.company.name} • ${companyData.company.stats.total_members} members`;
-                                document.getElementById('companyInfo').textContent = info;
-                                
-                                // Store the successful company ID
-                                localStorage.setItem('whop_company_id', this.companyId);
-                            }
-                        }
-                    } catch (error) {
-                        console.warn('Could not load company info:', error);
-                    }
-                    
-                    // Load members using the dynamic company ID
                     const response = await fetch(`/api/members/${this.companyId}`);
                     
                     console.log('📡 Response status:', response.status);
                     
                     if (!response.ok) {
-                        if (response.status === 400) {
-                            throw new Error('Invalid company ID provided');
-                        } else if (response.status === 404) {
+                        if (response.status === 404) {
                             // Company not found - this is expected for new companies
                             console.log(`ℹ️  Company ${this.companyId} not found yet - will be created when first member joins`);
                             this.members = [];
@@ -606,13 +412,6 @@
                         throw new Error(`HTTP error! status: ${response.status}`);
                     }
                     
-                    const contentType = response.headers.get('content-type');
-                    if (!contentType || !contentType.includes('application/json')) {
-                        const text = await response.text();
-                        console.error('❌ Expected JSON but got:', text.substring(0, 200));
-                        throw new Error('Server returned HTML instead of JSON - check server logs');
-                    }
-                    
                     const data = await response.json();
                     console.log('✅ API Response:', data);
                     
@@ -621,9 +420,6 @@
                         console.log(`📊 Loaded ${this.members.length} members for company ${this.companyId}`);
                         this.filterAndRenderMembers();
                         this.updateStats();
-                        
-                        // Store the successful company ID
-                        localStorage.setItem('whop_company_id', this.companyId);
                     } else {
                         console.error('Failed to load members:', data.error);
                         this.showError(`Failed to load members: ${data.error || 'Unknown error'}`);
@@ -636,7 +432,6 @@
                 }
             }
 
-            // Rest of the methods remain the same as before...
             setupEventListeners() {
                 const searchInput = document.getElementById('searchInput');
                 searchInput?.addEventListener('input', (e) => {
@@ -702,7 +497,7 @@
                                 <div style="text-align: center; padding: 40px;">
                                     <div style="color: #ef4444; font-size: 18px; margin-bottom: 12px;">⚠️ ${this.escapeHtml(message)}</div>
                                     <div style="color: #71717a; font-size: 14px; margin-bottom: 20px;">
-                                        Company ID: ${this.companyId}
+                                        Company: ${this.companyId}
                                     </div>
                                     <button onclick="memberDirectory.loadMembers()" class="btn-secondary">
                                         Retry
@@ -814,19 +609,6 @@
             formatCustomFields(customFields) {
                 if (!customFields || typeof customFields !== 'object') {
                     return '<div class="no-fields">No custom fields</div>';
-                }
-
-                if (customFields.status || customFields.error) {
-                    const isError = customFields.error;
-                    const message = customFields.status || customFields.error;
-                    const note = customFields.note;
-                    
-                    return `
-                        <div class="field-status">
-                            ${isError ? '⚠️' : 'ℹ️'} ${this.escapeHtml(message)}
-                            ${note ? `<div style="font-size: 11px; margin-top: 4px; opacity: 0.8;">${this.escapeHtml(note)}</div>` : ''}
-                        </div>
-                    `;
                 }
 
                 const entries = Object.entries(customFields).filter(([key]) => 
@@ -966,7 +748,6 @@
                     .field-item:last-child { margin-bottom: 0; }
                     .field-label { font-size: 12px; color: #71717a; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
                     .field-value { font-size: 14px; color: #ffffff; line-height: 1.4; }
-                    .field-status { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.2); border-radius: 6px; font-size: 12px; color: #fbbf24; }
                     .no-fields { color: #71717a; font-style: italic; font-size: 14px; }
                     .date-cell { text-align: right; color: #a1a1aa; font-size: 14px; white-space: nowrap; }
                     .loading-state, .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; text-align: center; }

@@ -228,21 +228,6 @@
             }
         }
 
-        /* Embeddable styles */
-        .embed-mode {
-            padding: 0;
-            max-width: none;
-        }
-
-        .embed-mode .header {
-            margin-bottom: 20px;
-            padding: 20px;
-        }
-
-        .embed-mode .header h1 {
-            font-size: 1.8rem;
-        }
-
         .company-selector {
             background: rgba(255, 255, 255, 0.1);
             padding: 20px;
@@ -284,8 +269,8 @@
             
             <!-- Company selector (shown when no company ID) -->
             <div class="company-selector" id="companySelector" style="display: none;">
-                <p style="margin-bottom: 15px;">Enter your company ID to view the member directory:</p>
-                <input type="text" id="companyInput" placeholder="e.g., biz_abc123..." />
+                <p style="margin-bottom: 15px;">Enter your company name to view the member directory:</p>
+                <input type="text" id="companyInput" placeholder="e.g., jaredstivala..." />
                 <button onclick="setCompanyId()">View Directory</button>
             </div>
             
@@ -332,14 +317,14 @@
             constructor() {
                 this.members = [];
                 this.filteredMembers = [];
-                this.companyId = this.getCompanyIdFromUrl();
+                this.companyId = this.getCompanyFromUrl();
                 this.apiBaseUrl = this.getApiBaseUrl();
                 
                 this.init();
             }
 
-            // UPDATED: Get company ID from URL with name resolution support
-            getCompanyIdFromUrl() {
+            // SIMPLIFIED: Get company name from URL directly
+            getCompanyFromUrl() {
                 // 1. Check URL path for /directory/:companyId
                 const pathMatch = window.location.pathname.match(/\/directory\/([^\/]+)/);
                 if (pathMatch) {
@@ -359,19 +344,28 @@
                     return hashMatch[1];
                 }
                 
-                // 4. NEW: Extract company name from whop.com/companyname pattern
-                const currentUrl = window.location.href;
-                const whopContextMatch = currentUrl.match(/whop\.com\/([^\/\?#]+)/);
-                if (whopContextMatch) {
-                    const companyName = whopContextMatch[1];
-                    console.log(`🔍 Found company name in URL: ${companyName}`);
-                    
-                    // Skip common non-company paths
-                    const skipPaths = ['app', 'apps', 'api', 'auth', 'login', 'signup', 'dashboard', 'admin', 'www'];
-                    if (!skipPaths.includes(companyName.toLowerCase())) {
-                        // Return company name with prefix to indicate it needs resolution
-                        return `name:${companyName}`;
+                // 4. Extract from whop.com/{company} pattern if we're in iframe
+                if (window.parent !== window && document.referrer) {
+                    try {
+                        const parentUrl = document.referrer;
+                        const match = parentUrl.match(/whop\.com\/([^\/]+)/);
+                        if (match) {
+                            const companyName = match[1];
+                            console.log(`✅ Found company from parent URL: ${companyName}`);
+                            return companyName;
+                        }
+                    } catch (error) {
+                        console.warn('Could not access parent URL:', error);
                     }
+                }
+                
+                // 5. Check current URL
+                const currentUrl = window.location.href;
+                const currentMatch = currentUrl.match(/whop\.com\/([^\/]+)/);
+                if (currentMatch) {
+                    const companyName = currentMatch[1];
+                    console.log(`✅ Found company from current URL: ${companyName}`);
+                    return companyName;
                 }
                 
                 return null;
@@ -383,33 +377,10 @@
                 return currentDomain.includes('localhost') ? 'http://localhost:3000' : currentDomain;
             }
 
-            // NEW: Helper function to resolve company name to ID via API
-            async resolveCompanyName(companyName) {
-                try {
-                    console.log(`🔍 Resolving company name "${companyName}" via API`);
-                    
-                    const response = await fetch(`${this.apiBaseUrl}/api/resolve-company/${encodeURIComponent(companyName)}`);
-                    if (response.ok) {
-                        const data = await response.json();
-                        if (data.success && data.company_id) {
-                            console.log(`✅ API resolved: ${companyName} -> ${data.company_id}`);
-                            return data.company_id;
-                        }
-                    }
-                    
-                    console.log(`❌ Could not resolve company name: ${companyName}`);
-                    return null;
-                    
-                } catch (error) {
-                    console.warn('Error resolving company name via API:', error);
-                    return null;
-                }
-            }
-
             showCompanySelector() {
                 document.getElementById('companySelector').style.display = 'block';
                 document.getElementById('loadingState').style.display = 'none';
-                document.getElementById('companyInfo').textContent = 'Please enter your company ID to continue';
+                document.getElementById('companyInfo').textContent = 'Please enter your company name to continue';
                 
                 // Set up enter key listener
                 document.getElementById('companyInput').addEventListener('keypress', (e) => {
@@ -424,7 +395,7 @@
                 const companyId = input.value.trim();
                 
                 if (!companyId) {
-                    alert('Please enter a company ID');
+                    alert('Please enter a company name');
                     return;
                 }
                 
@@ -432,49 +403,15 @@
                 window.location.href = `${window.location.origin}/directory/${companyId}`;
             }
 
-            // UPDATED: Init method with company name resolution
             async init() {
-                // Handle company name resolution
-                if (this.companyId && this.companyId.startsWith('name:')) {
-                    const companyName = this.companyId.substring(5); // Remove 'name:' prefix
-                    console.log(`🔍 Need to resolve company name: ${companyName}`);
-                    
-                    const resolvedId = await this.resolveCompanyName(companyName);
-                    if (resolvedId) {
-                        this.companyId = resolvedId;
-                        console.log(`✅ Resolved to company ID: ${resolvedId}`);
-                    } else {
-                        this.showCompanySelector();
-                        return;
-                    }
-                }
-                
                 if (!this.companyId) {
                     this.showCompanySelector();
                     return;
                 }
                 
                 document.getElementById('companyInfo').textContent = `Company: ${this.companyId}`;
-                await this.loadGroupConfig();
                 await this.loadMembers();
                 this.setupEventListeners();
-            }
-
-            async loadGroupConfig() {
-                try {
-                    const response = await fetch(`${this.apiBaseUrl}/api/company/${this.companyId}`);
-                    if (response.ok) {
-                        const data = await response.json();
-                        if (data.success && data.company) {
-                            document.getElementById('groupName').textContent = 
-                                `Member Directory`;
-                            document.getElementById('companyInfo').textContent = 
-                                `Company: ${this.companyId} • ${data.company.stats.total_members} members`;
-                        }
-                    }
-                } catch (error) {
-                    console.error('Error loading group config:', error);
-                }
             }
 
             async loadMembers() {
@@ -627,7 +564,7 @@
                 errorElement.innerHTML = `
                     <h3>Error Loading Directory</h3>
                     <p>${this.escapeHtml(message)}</p>
-                    <p style="margin-top: 10px; font-size: 14px;">Company ID: ${this.companyId}</p>
+                    <p style="margin-top: 10px; font-size: 14px;">Company: ${this.companyId}</p>
                     <button onclick="location.reload()" style="margin-top: 15px; padding: 8px 16px; background: #dc2626; color: white; border: none; border-radius: 4px; cursor: pointer;">
                         Retry
                     </button>

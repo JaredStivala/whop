@@ -1,4 +1,4 @@
-// ==================== COMPLETE UPDATED SERVER.JS - COMPANY NAME DETECTION ====================
+// ==================== SIMPLIFIED SERVER.JS - DIRECT COMPANY NAME ====================
 
 const express = require('express');
 const { Pool } = require('pg');
@@ -60,100 +60,31 @@ pool.connect()
 
 // ==================== HELPER FUNCTIONS ====================
 
-// NEW: Helper function to resolve company name to company ID
-async function resolveCompanyNameToId(companyName) {
-  try {
-    console.log(`🔍 Resolving company name "${companyName}" to company_id`);
-    
-    // Query database to find company by name/route
-    const result = await pool.query(`
-      SELECT company_id, name, title, route 
-      FROM whop_companies 
-      WHERE 
-        LOWER(name) = LOWER($1) OR 
-        LOWER(title) = LOWER($1) OR 
-        LOWER(route) = LOWER($1) OR
-        company_id = $1
-      LIMIT 1
-    `, [companyName]);
-    
-    if (result.rows.length > 0) {
-      const company = result.rows[0];
-      console.log(`✅ Found company: ${company.name} -> ${company.company_id}`);
-      return company.company_id;
-    }
-    
-    // If no exact match, try partial matching
-    const partialResult = await pool.query(`
-      SELECT company_id, name, title, route 
-      FROM whop_companies 
-      WHERE 
-        LOWER(name) LIKE LOWER($1) OR 
-        LOWER(title) LIKE LOWER($1) OR 
-        LOWER(route) LIKE LOWER($1)
-      LIMIT 1
-    `, [`%${companyName}%`]);
-    
-    if (partialResult.rows.length > 0) {
-      const company = partialResult.rows[0];
-      console.log(`✅ Found partial match: ${company.name} -> ${company.company_id}`);
-      return company.company_id;
-    }
-    
-    console.log(`❌ No company found for name: ${companyName}`);
-    return null;
-    
-  } catch (error) {
-    console.error('❌ Error resolving company name to ID:', error);
-    return null;
-  }
-}
-
-// UPDATED: Helper function to extract company ID from webhook data
+// SIMPLIFIED: Extract company name from webhook data
 function extractCompanyId(data) {
   console.log('🔍 Extracting company ID from webhook data...');
   console.log('📋 Available fields:', Object.keys(data));
   
-  // Check all possible company ID fields
-  const companyId = 
-    data.company_buyer_id ||          // Most common from your logs
-    data.page_id ||                   // Sometimes contains company info  
-    data.company_id ||                // Direct field
-    data.business_id ||               // Alternative name
-    data.hub_id ||                    // Legacy field
-    data.companyId ||                 // Camel case
-    data.businessId ||                // Camel case
-    // Check nested objects
-    data.membership?.company_id ||
-    data.product?.company_id ||
-    data.checkout?.company_id;
+  // Check direct company ID fields first
+  const directCompanyId = 
+    data.company_buyer_id ||
+    data.page_id ||
+    data.company_id ||
+    data.business_id ||
+    data.hub_id;
   
-  if (companyId) {
-    console.log(`✅ Found company ID: ${companyId}`);
-    return companyId;
+  if (directCompanyId) {
+    console.log(`✅ Found direct company ID: ${directCompanyId}`);
+    return directCompanyId;
   }
   
-  // Try to extract from URLs if present
+  // Extract company name from manage_url
   if (data.manage_url) {
-    // NEW: Look for company name pattern in URL: whop.com/companyname/...
-    const nameMatch = data.manage_url.match(/whop\.com\/([^\/\?#]+)/);
-    if (nameMatch) {
-      const companyName = nameMatch[1];
-      console.log(`🔍 Extracted company name from URL: ${companyName}`);
-      
-      // Skip common non-company paths
-      const skipPaths = ['app', 'apps', 'api', 'auth', 'login', 'signup', 'dashboard', 'admin'];
-      if (!skipPaths.includes(companyName.toLowerCase())) {
-        // Store for async resolution (will be handled by ensureCompanyExists)
-        return `name:${companyName}`;
-      }
-    }
-    
-    // Fallback: look for company ID pattern in URL
-    const idMatch = data.manage_url.match(/\/(biz_[a-zA-Z0-9]+)/);
-    if (idMatch) {
-      console.log(`✅ Extracted company ID from URL: ${idMatch[1]}`);
-      return idMatch[1];
+    const urlMatch = data.manage_url.match(/whop\.com\/([^\/]+)/);
+    if (urlMatch) {
+      const companyName = urlMatch[1];
+      console.log(`✅ Extracted company name from URL: ${companyName}`);
+      return companyName;
     }
   }
   
@@ -161,37 +92,9 @@ function extractCompanyId(data) {
   return null;
 }
 
-// UPDATED: Function to ensure company exists in whop_companies table
-async function ensureCompanyExists(companyIdOrName) {
+// SIMPLIFIED: Ensure company exists (use company name directly)
+async function ensureCompanyExists(companyId) {
   try {
-    let companyId = companyIdOrName;
-    
-    // NEW: Check if it's a company name that needs resolution
-    if (companyIdOrName.startsWith('name:')) {
-      const companyName = companyIdOrName.substring(5); // Remove 'name:' prefix
-      console.log(`🔍 Resolving company name: ${companyName}`);
-      
-      companyId = await resolveCompanyNameToId(companyName);
-      
-      if (!companyId) {
-        // Create a new company with this name
-        console.log(`➕ Creating new company with name: ${companyName}`);
-        
-        // Generate a company ID (you might want to use a different pattern)
-        companyId = `biz_${companyName.toLowerCase().replace(/[^a-z0-9]/g, '')}${Date.now().toString(36)}`;
-        
-        const result = await pool.query(`
-          INSERT INTO whop_companies (
-            company_id, name, title, route, created_at, updated_at
-          ) VALUES ($1, $2, $3, $4, NOW(), NOW())
-          RETURNING *
-        `, [companyId, companyName, companyName, companyName]);
-        
-        console.log(`🎉 Created new company: ${companyName} -> ${companyId}`);
-        return result.rows[0];
-      }
-    }
-    
     // Check if company already exists
     const existingCompany = await pool.query(
       'SELECT id, name FROM whop_companies WHERE company_id = $1',
@@ -206,50 +109,15 @@ async function ensureCompanyExists(companyIdOrName) {
     // Company doesn't exist, create it
     console.log(`➕ Creating new company record: ${companyId}`);
     
-    // Try to fetch company details from Whop API if we have an API key
-    let companyName = `Company ${companyId}`; // Default name
-    let companyData = {};
+    // Use company ID as the name too
+    const companyName = companyId.startsWith('biz_') ? `Company ${companyId}` : companyId;
     
-    if (process.env.WHOP_API_KEY) {
-      try {
-        const response = await fetch(`https://api.whop.com/api/v5/app/companies/${companyId}`, {
-          headers: {
-            'Authorization': `Bearer ${process.env.WHOP_API_KEY}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        if (response.ok) {
-          const apiData = await response.json();
-          companyName = apiData.title || apiData.name || companyName;
-          companyData = {
-            title: apiData.title,
-            route: apiData.route,
-            image_url: apiData.image_url,
-            hostname: apiData.hostname
-          };
-          console.log(`📊 Fetched company details: ${companyName}`);
-        }
-      } catch (error) {
-        console.warn('⚠️ Could not fetch company details from API:', error.message);
-      }
-    }
-    
-    // Insert new company
     const result = await pool.query(`
       INSERT INTO whop_companies (
-        company_id, name, title, route, image_url, hostname, 
-        created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
+        company_id, name, title, route, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, NOW(), NOW())
       RETURNING *
-    `, [
-      companyId,
-      companyName,
-      companyData.title || companyName,
-      companyData.route || null,
-      companyData.image_url || null,
-      companyData.hostname || null
-    ]);
+    `, [companyId, companyName, companyName, companyId]);
     
     console.log(`🎉 Created company record: ${companyName}`);
     return result.rows[0];
@@ -282,54 +150,6 @@ app.get('/api/test', (req, res) => {
     timestamp: new Date().toISOString(),
     server: 'Whop Member Directory API'
   });
-});
-
-// NEW: Resolve company name to company ID
-app.get('/api/resolve-company/:companyName', async (req, res) => {
-  const { companyName } = req.params;
-  
-  try {
-    console.log(`🔍 API: Resolving company name: ${companyName}`);
-    
-    const companyId = await resolveCompanyNameToId(companyName);
-    
-    if (companyId) {
-      // Get full company details
-      const result = await pool.query(
-        'SELECT * FROM whop_companies WHERE company_id = $1',
-        [companyId]
-      );
-      
-      if (result.rows.length > 0) {
-        const company = result.rows[0];
-        return res.json({
-          success: true,
-          company_id: companyId,
-          company: {
-            id: company.company_id,
-            name: company.name,
-            title: company.title,
-            route: company.route,
-            image_url: company.image_url,
-            hostname: company.hostname
-          }
-        });
-      }
-    }
-    
-    res.status(404).json({
-      success: false,
-      error: `No company found for name: ${companyName}`,
-      company_name: companyName
-    });
-    
-  } catch (error) {
-    console.error('❌ Error in resolve-company endpoint:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
 });
 
 // Get company information
@@ -395,7 +215,7 @@ app.get('/api/company/:companyId', async (req, res) => {
   }
 });
 
-// Get all companies (admin endpoint)
+// Get all companies
 app.get('/api/companies', async (req, res) => {
   try {
     console.log('🏢 API: Fetching all companies');
@@ -448,7 +268,6 @@ app.get('/api/companies', async (req, res) => {
 app.get('/api/members/:companyId', async (req, res) => {
   const { companyId } = req.params;
   
-  // Validate company ID format
   if (!companyId || companyId === 'undefined' || companyId === 'null') {
     return res.status(400).json({
       success: false,
@@ -549,128 +368,6 @@ app.get('/api/members/:companyId', async (req, res) => {
   }
 });
 
-// Get directory data (for the frontend)
-app.get('/api/directory/:companyId', async (req, res) => {
-  const { companyId } = req.params;
-  
-  try {
-    console.log(`📋 API: Fetching directory data for company: ${companyId}`);
-    
-    // Get company info
-    const companyResult = await pool.query(
-      'SELECT * FROM whop_companies WHERE company_id = $1',
-      [companyId]
-    );
-
-    if (companyResult.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        error: 'Company not found',
-        company_id: companyId
-      });
-    }
-
-    // Get members
-    const membersResult = await pool.query(`
-      SELECT 
-        user_id, membership_id, email, name, username, 
-        custom_fields, joined_at, status
-      FROM whop_members 
-      WHERE company_id = $1 AND status = 'active'
-      ORDER BY joined_at DESC
-    `, [companyId]);
-
-    const company = companyResult.rows[0];
-    const members = membersResult.rows.map(member => {
-      let parsedCustomFields = {};
-      
-      if (member.custom_fields) {
-        try {
-          parsedCustomFields = typeof member.custom_fields === 'string' 
-            ? JSON.parse(member.custom_fields) 
-            : member.custom_fields;
-        } catch (e) {
-          parsedCustomFields = {};
-        }
-      }
-
-      return {
-        user_id: member.user_id,
-        membership_id: member.membership_id,
-        email: member.email,
-        name: member.name,
-        username: member.username,
-        waitlist_responses: parsedCustomFields,
-        joined_at: member.joined_at,
-        status: member.status
-      };
-    });
-
-    console.log(`✅ Directory data: ${company.name} with ${members.length} active members`);
-
-    res.json({
-      success: true,
-      group: {
-        company_id: company.company_id,
-        group_name: company.name || company.title,
-        name: company.name,
-        title: company.title,
-        route: company.route,
-        image_url: company.image_url
-      },
-      members: members,
-      count: members.length,
-      timestamp: new Date().toISOString()
-    });
-
-  } catch (error) {
-    console.error('❌ Error fetching directory data:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
-
-// Debug endpoint to see company and member data
-app.get('/api/debug/:companyId', async (req, res) => {
-  const { companyId } = req.params;
-  
-  try {
-    // Get company data
-    const companyResult = await pool.query(
-      'SELECT * FROM whop_companies WHERE company_id = $1',
-      [companyId]
-    );
-
-    // Get member data
-    const membersResult = await pool.query(`
-      SELECT * FROM whop_members 
-      WHERE company_id = $1
-      ORDER BY joined_at DESC
-      LIMIT 5
-    `, [companyId]);
-
-    res.json({
-      success: true,
-      debug: {
-        company_exists: companyResult.rows.length > 0,
-        company_data: companyResult.rows[0] || null,
-        member_count: membersResult.rows.length,
-        recent_members: membersResult.rows,
-        company_id: companyId
-      }
-    });
-
-  } catch (error) {
-    console.error('❌ Debug endpoint error:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
-
 // ==================== WEBHOOK ENDPOINT ====================
 
 app.post('/webhook/whop', async (req, res) => {
@@ -685,27 +382,20 @@ app.post('/webhook/whop', async (req, res) => {
       return res.status(400).json({ error: 'No data provided' });
     }
 
-    // Extract company ID using the UPDATED function
+    // Extract company ID using simplified function
     const companyId = extractCompanyId(data);
     
     if (!companyId) {
       console.error('❌ No company ID found in webhook data');
       console.log('📋 Available webhook fields:', Object.keys(data));
-      console.log('📋 Sample field values:', {
-        company_buyer_id: data.company_buyer_id,
-        page_id: data.page_id,
-        company_id: data.company_id,
-        manage_url: data.manage_url
-      });
       
       return res.status(400).json({ 
         error: 'No company ID found in webhook data',
-        available_fields: Object.keys(data),
-        debug_hint: 'Check if company_buyer_id or page_id contains the company ID'
+        available_fields: Object.keys(data)
       });
     }
 
-    // ✅ Ensure company exists BEFORE trying to add members (handles name resolution)
+    // Ensure company exists
     await ensureCompanyExists(companyId);
 
     const userId = data.user_id || data.user;
@@ -738,37 +428,15 @@ app.post('/webhook/whop', async (req, res) => {
       });
     }
 
-    // Fetch user details from Whop API
-    let whopUserData = null;
-    try {
-      if (process.env.WHOP_API_KEY) {
-        const userResponse = await fetch(`https://api.whop.com/api/v5/app/users/${userId}`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${process.env.WHOP_API_KEY}`,
-            'Content-Type': 'application/json'
-          }
-        });
-
-        if (userResponse.ok) {
-          whopUserData = await userResponse.json();
-          console.log('👤 User data fetched successfully');
-        }
-      }
-    } catch (fetchError) {
-      console.warn('⚠️ Could not fetch user data from Whop API:', fetchError.message);
-    }
-
     // Prepare member data
-    const email = whopUserData?.email || data.email || null;
-    const name = whopUserData?.name || data.name || null;
-    const username = whopUserData?.username || data.username || null;
+    const email = data.email || null;
+    const name = data.name || null;
+    const username = data.username || null;
     const customFields = JSON.stringify(data.custom_field_responses || data.waitlist_responses || {});
     
-    // ✅ Handle Unix timestamp conversion correctly
+    // Handle timestamp
     let joinedAt = new Date();
     if (data.created_at) {
-      // If it's a Unix timestamp (seconds), convert to milliseconds
       const timestamp = typeof data.created_at === 'number' ? data.created_at * 1000 : data.created_at;
       joinedAt = new Date(timestamp);
     }
@@ -826,34 +494,9 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-app.get('/app', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
 // Company-specific directory
 app.get('/directory/:companyId', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'directory.html'));
-});
-
-// 404 handler for API routes
-app.use('/api/*', (req, res) => {
-  console.log(`❌ API route not found: ${req.method} ${req.path}`);
-  res.status(404).json({ 
-    error: 'API endpoint not found',
-    path: req.path,
-    method: req.method,
-    available_endpoints: [
-      'GET /api/test',
-      'GET /api/health',
-      'GET /api/companies',
-      'GET /api/company/:companyId',
-      'GET /api/resolve-company/:companyName',
-      'GET /api/members/:companyId',
-      'GET /api/directory/:companyId',
-      'GET /api/debug/:companyId',
-      'POST /webhook/whop'
-    ]
-  });
 });
 
 // Catch-all for SPA routing
@@ -875,16 +518,8 @@ app.listen(port, () => {
   console.log('   GET  /api/health                   - Health check');
   console.log('   GET  /api/companies                - Get all companies');
   console.log('   GET  /api/company/:companyId       - Get company info');
-  console.log('   GET  /api/resolve-company/:name    - Resolve company name to ID');
   console.log('   GET  /api/members/:companyId       - Get members');
-  console.log('   GET  /api/directory/:companyId     - Directory data');
-  console.log('   GET  /api/debug/:companyId         - Debug endpoint');
   console.log('   POST /webhook/whop                 - Whop webhook');
-  console.log('');
-  console.log('📄 Frontend Routes:');
-  console.log('   GET  /                             - Member Directory');
-  console.log('   GET  /app                          - Member Directory');
-  console.log('   GET  /directory/:companyId         - Company-specific directory');
   console.log('');
 });
 

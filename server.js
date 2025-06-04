@@ -51,17 +51,32 @@ app.get('/api/directory/:companyName', async (req, res) => {
   try {
     console.log(`🔍 Looking up company: ${companyName}`);
     
-    // Step 1: Find company_id from company_name
-    const companyResult = await pool.query(
-      'SELECT company_id, company_name FROM whop_companies WHERE company_name = $1',
-      [companyName]
-    );
+    // Step 1: Find company_id from company name (checking multiple possible column names)
+    const companyResult = await pool.query(`
+      SELECT company_id, name, title, route 
+      FROM whop_companies 
+      WHERE 
+        name = $1 OR 
+        title = $1 OR 
+        route = $1 OR
+        LOWER(name) = LOWER($1) OR
+        LOWER(title) = LOWER($1) OR
+        LOWER(route) = LOWER($1)
+      LIMIT 1
+    `, [companyName]);
 
     if (companyResult.rows.length === 0) {
+      console.log(`❌ Company "${companyName}" not found`);
+      
+      // Debug: Show all companies
+      const allCompanies = await pool.query('SELECT company_id, name, title, route FROM whop_companies LIMIT 10');
+      console.log('📋 Available companies:', allCompanies.rows);
+      
       return res.status(404).json({
         success: false,
         error: `Company "${companyName}" not found`,
-        company_name: companyName
+        company_name: companyName,
+        available_companies: allCompanies.rows
       });
     }
 
@@ -117,6 +132,7 @@ app.get('/api/directory/:companyName', async (req, res) => {
       success: true,
       company_name: companyName,
       company_id: companyId,
+      company_data: company,
       members: members,
       count: members.length,
       timestamp: new Date().toISOString()

@@ -290,8 +290,10 @@
 
             // Extract company name from URL
             getCompanyFromUrl() {
-                // Check if we're in an iframe and get the parent URL
-                if (window.parent !== window && document.referrer) {
+                console.log('🔍 Starting company detection...');
+                
+                // Method 1: Check if we're in an iframe and get the parent URL
+                if (window.parent !== window) {
                     try {
                         const parentUrl = document.referrer;
                         console.log('🔍 Checking parent URL:', parentUrl);
@@ -308,8 +310,9 @@
                     }
                 }
                 
-                // Check current URL
+                // Method 2: Check current URL (for testing)
                 const currentUrl = window.location.href;
+                console.log('🔍 Checking current URL:', currentUrl);
                 const currentMatch = currentUrl.match(/whop\.com\/([^\/\?#]+)/);
                 if (currentMatch) {
                     const companyName = currentMatch[1];
@@ -317,8 +320,9 @@
                     return companyName;
                 }
                 
-                console.log('❌ No company found in URL');
-                return null;
+                // Method 3: For testing - hardcode jaredstivala
+                console.log('🔍 No company found, using jaredstivala for testing');
+                return 'jaredstivala';
             }
 
             async init() {

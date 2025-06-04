@@ -20,7 +20,7 @@
         }
 
         .container {
-            max-width: 800px;
+            max-width: 1000px;
             margin: 0 auto;
         }
 
@@ -77,9 +77,11 @@
             padding: 15px;
             margin-top: 15px;
             font-family: monospace;
-            font-size: 14px;
+            font-size: 12px;
             white-space: pre-wrap;
             overflow-x: auto;
+            max-height: 400px;
+            overflow-y: auto;
         }
 
         .companies-list {
@@ -124,21 +126,63 @@
         .url-examples a:hover {
             text-decoration: underline;
         }
+
+        .status {
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-weight: 600;
+            display: inline-block;
+            margin: 5px 0;
+        }
+
+        .status.success {
+            background: rgba(34, 197, 94, 0.2);
+            border: 1px solid rgba(34, 197, 94, 0.5);
+            color: #4ade80;
+        }
+
+        .status.error {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(239, 68, 68, 0.5);
+            color: #f87171;
+        }
+
+        .current-url {
+            background: rgba(168, 85, 247, 0.1);
+            border: 1px solid rgba(168, 85, 247, 0.3);
+            border-radius: 6px;
+            padding: 10px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Member Directory - Test & Debug</h1>
+        <h1>🔧 Member Directory - Debug Panel</h1>
+        
+        <div class="current-url">
+            <strong>Current URL:</strong> <span id="currentUrl"></span><br>
+            <strong>Detected Company:</strong> <span id="detectedCompany"></span>
+        </div>
 
         <div class="section">
-            <h2>1. Available Companies</h2>
+            <h2>1. 🏥 API Health Check</h2>
+            <button onclick="testHealthCheck()">Check API Health</button>
+            <button onclick="testHealthCheckAlt()">Check /health</button>
+            <div id="healthResult" class="result" style="display: none;"></div>
+        </div>
+
+        <div class="section">
+            <h2>2. 🏢 Available Companies</h2>
             <button onclick="loadCompanies()">Load All Companies</button>
             <div id="companiesResult" class="result" style="display: none;"></div>
             <div id="companiesList" class="companies-list"></div>
         </div>
 
         <div class="section">
-            <h2>2. Test Member Lookup</h2>
+            <h2>3. 👥 Test Member Lookup</h2>
             <div class="test-form">
                 <input 
                     type="text" 
@@ -152,47 +196,81 @@
         </div>
 
         <div class="section">
-            <h2>3. URL Detection Test</h2>
-            <button onclick="testUrlDetection()">Test Current URL</button>
+            <h2>4. 🔗 URL Detection Test</h2>
+            <button onclick="testUrlDetection()">Test Current URL Detection</button>
             <div id="urlResult" class="result" style="display: none;"></div>
             
             <div class="url-examples">
-                <h3>Test URLs:</h3>
+                <h3>🧪 Test Different URLs:</h3>
                 <a href="/directory/jaredstivala" target="_blank">/directory/jaredstivala</a>
                 <a href="/directory/jaredsuniverse" target="_blank">/directory/jaredsuniverse</a>
                 <a href="/?company=jaredstivala" target="_blank">/?company=jaredstivala</a>
                 <a href="/directory.html?company=jaredstivala" target="_blank">/directory.html?company=jaredstivala</a>
+                <a href="/test.html" target="_blank">/test.html (this page)</a>
             </div>
         </div>
 
         <div class="section">
-            <h2>4. API Health Check</h2>
-            <button onclick="testHealthCheck()">Check API Health</button>
-            <div id="healthResult" class="result" style="display: none;"></div>
+            <h2>5. 🌐 Direct API Tests</h2>
+            <div style="margin-bottom: 10px;">
+                <button onclick="testDirectAPI('/api/health')">Test /api/health</button>
+                <button onclick="testDirectAPI('/health')">Test /health</button>
+                <button onclick="testDirectAPI('/api/companies')">Test /api/companies</button>
+            </div>
+            <div id="directApiResult" class="result" style="display: none;"></div>
         </div>
     </div>
 
     <script>
-        async function loadCompanies() {
-            try {
-                const response = await fetch('/api/companies');
-                const data = await response.json();
-                
-                document.getElementById('companiesResult').style.display = 'block';
-                document.getElementById('companiesResult').textContent = JSON.stringify(data, null, 2);
-                
-                if (data.success && data.companies) {
-                    const companiesList = document.getElementById('companiesList');
-                    companiesList.innerHTML = data.companies.map(company => 
-                        `<div class="company-item" onclick="testCompany('${company.company_name}')">
-                            <strong>${company.company_name}</strong><br>
-                            <small>${company.company_id}</small>
-                        </div>`
-                    ).join('');
+        // Show current URL info on load
+        document.getElementById('currentUrl').textContent = window.location.href;
+        
+        // Test company detection
+        function detectCompany() {
+            // Same logic as the main app
+            const pathMatch = window.location.pathname.match(/\/directory\/([^\/]+)/);
+            if (pathMatch) return pathMatch[1];
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            const queryCompany = urlParams.get('company');
+            if (queryCompany) return queryCompany;
+            
+            if (document.referrer) {
+                const match = document.referrer.match(/whop\.com\/([^\/\?#]+)/);
+                if (match && match[1] !== 'app' && match[1] !== 'www') {
+                    return match[1];
                 }
-            } catch (error) {
-                document.getElementById('companiesResult').style.display = 'block';
-                document.getElementById('companiesResult').textContent = `Error: ${error.message}`;
+            }
+            
+            const currentMatch = window.location.href.match(/whop\.com\/([^\/\?#]+)/);
+            if (currentMatch && currentMatch[1] !== 'app' && currentMatch[1] !== 'www') {
+                return currentMatch[1];
+            }
+            
+            return null;
+        }
+
+        document.getElementById('detectedCompany').textContent = detectCompany() || 'None detected';
+
+        async function testHealthCheck() {
+            await makeApiCall('/api/health', 'healthResult');
+        }
+
+        async function testHealthCheckAlt() {
+            await makeApiCall('/health', 'healthResult');
+        }
+
+        async function loadCompanies() {
+            const data = await makeApiCall('/api/companies', 'companiesResult');
+            
+            if (data && data.success && data.companies) {
+                const companiesList = document.getElementById('companiesList');
+                companiesList.innerHTML = data.companies.map(company => 
+                    `<div class="company-item" onclick="testCompany('${company.company_name}')">
+                        <strong>${company.company_name}</strong><br>
+                        <small>${company.company_id}</small>
+                    </div>`
+                ).join('');
             }
         }
 
@@ -203,16 +281,7 @@
                 return;
             }
 
-            try {
-                const response = await fetch(`/api/members/${encodeURIComponent(companyName)}`);
-                const data = await response.json();
-                
-                document.getElementById('membersResult').style.display = 'block';
-                document.getElementById('membersResult').textContent = JSON.stringify(data, null, 2);
-            } catch (error) {
-                document.getElementById('membersResult').style.display = 'block';
-                document.getElementById('membersResult').textContent = `Error: ${error.message}`;
-            }
+            await makeApiCall(`/api/members/${encodeURIComponent(companyName)}`, 'membersResult');
         }
 
         function testCompany(companyName) {
@@ -223,6 +292,7 @@
         function testUrlDetection() {
             const info = {
                 currentUrl: window.location.href,
+                origin: window.location.origin,
                 pathname: window.location.pathname,
                 search: window.location.search,
                 hash: window.location.hash,
@@ -232,30 +302,68 @@
                 pathMatch: window.location.pathname.match(/\/directory\/([^\/]+)/),
                 queryCompany: new URLSearchParams(window.location.search).get('company'),
                 whopMatch: window.location.href.match(/whop\.com\/([^\/\?#]+)/),
-                referrerWhopMatch: document.referrer ? document.referrer.match(/whop\.com\/([^\/\?#]+)/) : null
+                referrerWhopMatch: document.referrer ? document.referrer.match(/whop\.com\/([^\/\?#]+)/) : null,
+                
+                detectedCompany: detectCompany()
             };
 
             document.getElementById('urlResult').style.display = 'block';
             document.getElementById('urlResult').textContent = JSON.stringify(info, null, 2);
         }
 
-        async function testHealthCheck() {
+        async function testDirectAPI(endpoint) {
+            await makeApiCall(endpoint, 'directApiResult');
+        }
+
+        async function makeApiCall(endpoint, resultElementId) {
+            const resultElement = document.getElementById(resultElementId);
+            resultElement.style.display = 'block';
+            resultElement.textContent = `Loading ${endpoint}...`;
+            
             try {
-                const response = await fetch('/health');
-                const data = await response.json();
+                console.log(`🔍 Making API call to: ${endpoint}`);
                 
-                document.getElementById('healthResult').style.display = 'block';
-                document.getElementById('healthResult').textContent = JSON.stringify(data, null, 2);
+                const response = await fetch(endpoint);
+                console.log(`📡 Response status: ${response.status}`);
+                console.log(`📡 Response headers:`, response.headers.get('content-type'));
+                
+                const responseText = await response.text();
+                console.log(`📡 Response text (first 200 chars):`, responseText.substring(0, 200));
+                
+                let data;
+                try {
+                    data = JSON.parse(responseText);
+                } catch (parseError) {
+                    console.error('❌ JSON parse error:', parseError);
+                    throw new Error(`Invalid JSON response. Got: ${responseText.substring(0, 100)}...`);
+                }
+                
+                resultElement.innerHTML = `
+                    <div class="status ${response.ok ? 'success' : 'error'}">
+                        ${response.status} ${response.statusText}
+                    </div>
+                    ${JSON.stringify(data, null, 2)}
+                `;
+                
+                return data;
+                
             } catch (error) {
-                document.getElementById('healthResult').style.display = 'block';
-                document.getElementById('healthResult').textContent = `Error: ${error.message}`;
+                console.error('❌ API call error:', error);
+                resultElement.innerHTML = `
+                    <div class="status error">ERROR</div>
+                    ${error.message}
+                `;
+                return null;
             }
         }
 
-        // Auto-load companies on page load
+        // Auto-load on page load
         document.addEventListener('DOMContentLoaded', () => {
-            loadCompanies();
             testUrlDetection();
+            testHealthCheck();
+            setTimeout(() => {
+                loadCompanies();
+            }, 1000);
         });
     </script>
 </body>

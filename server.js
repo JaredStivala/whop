@@ -54,8 +54,24 @@ app.get('/health', (req, res) => {
 app.get('/api/members/:companyName', async (req, res) => {
   const { companyName } = req.params;
   
+  // Set content type to JSON explicitly
+  res.setHeader('Content-Type', 'application/json');
+  
   try {
     console.log(`🔍 Looking up company: "${companyName}"`);
+    
+    // Test database connection first
+    try {
+      await pool.query('SELECT 1');
+      console.log('✅ Database connection verified');
+    } catch (dbError) {
+      console.error('❌ Database connection failed:', dbError);
+      return res.status(500).json({
+        success: false,
+        error: 'Database connection failed',
+        details: dbError.message
+      });
+    }
     
     // Step 1: Find company_id from company_name (case insensitive)
     const companyQuery = `
@@ -64,20 +80,33 @@ app.get('/api/members/:companyName', async (req, res) => {
       WHERE LOWER(company_name) = LOWER($1)
     `;
     
+    console.log(`📋 Executing query: ${companyQuery} with param: ${companyName}`);
     const companyResult = await pool.query(companyQuery, [companyName]);
+    console.log(`📋 Company query result: ${companyResult.rows.length} rows`);
 
     if (companyResult.rows.length === 0) {
       console.log(`❌ Company "${companyName}" not found`);
       
       // Show available companies for debugging
-      const allCompanies = await pool.query('SELECT company_name FROM whop_companies LIMIT 10');
-      console.log('📋 Available companies:', allCompanies.rows.map(row => row.company_name));
-      
-      return res.status(404).json({
-        success: false,
-        error: `Company "${companyName}" not found`,
-        available_companies: allCompanies.rows.map(row => row.company_name)
-      });
+      try {
+        const allCompanies = await pool.query('SELECT company_name FROM whop_companies LIMIT 10');
+        console.log('📋 Available companies:', allCompanies.rows.map(row => row.company_name));
+        
+        return res.status(404).json({
+          success: false,
+          error: `Company "${companyName}" not found`,
+          available_companies: allCompanies.rows.map(row => row.company_name),
+          searched_for: companyName
+        });
+      } catch (listError) {
+        console.error('❌ Error listing companies:', listError);
+        return res.status(404).json({
+          success: false,
+          error: `Company "${companyName}" not found`,
+          searched_for: companyName,
+          note: 'Could not list available companies due to database error'
+        });
+      }
     }
 
     const company = companyResult.rows[0];
@@ -92,36 +121,60 @@ app.get('/api/members/:companyName', async (req, res) => {
       ORDER BY joined_at DESC NULLS LAST
     `;
     
+    console.log(`📋 Executing members query for company_id: ${companyId}`);
     const membersResult = await pool.query(membersQuery, [companyId]);
     console.log(`✅ Found ${membersResult.rows.length} members for ${companyName}`);
 
     // Format members data
-    const members = membersResult.rows.map(member => ({
-      id: member.id,
-      user_id: member.user_id,
-      membership_id: member.membership_id,
-      email: member.email,
-      name: member.name,
-      username: member.username,
-      custom_fields: member.custom_fields || {},
-      joined_at: member.joined_at,
-      status: member.status || 'active'
-    }));
+    const members = membersResult.rows.map(member => {
+      let customFields = {};
+      if (member.custom_fields) {
+        try {
+          if (typeof member.custom_fields === 'string') {
+            customFields = JSON.parse(member.custom_fields);
+          } else {
+            customFields = member.custom_fields;
+          }
+        } catch (parseError) {
+          console.warn('❌ Error parsing custom_fields for member:', member.id);
+          customFields = {};
+        }
+      }
 
-    res.json({
+      return {
+        id: member.id,
+        user_id: member.user_id,
+        membership_id: member.membership_id,
+        email: member.email,
+        name: member.name,
+        username: member.username,
+        custom_fields: customFields,
+        joined_at: member.joined_at,
+        status: member.status || 'active'
+      };
+    });
+
+    const response = {
       success: true,
       company_name: companyName,
       company_id: companyId,
       members: members,
-      count: members.length
-    });
+      count: members.length,
+      timestamp: new Date().toISOString()
+    };
+    
+    console.log(`✅ Sending response with ${members.length} members`);
+    res.json(response);
 
   } catch (error) {
     console.error('❌ Error in members lookup:', error);
+    console.error('❌ Stack trace:', error.stack);
+    
     res.status(500).json({
       success: false,
       error: error.message,
-      company_name: companyName
+      company_name: companyName,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 });
@@ -213,19 +266,44 @@ app.post('/webhook/whop', async (req, res) => {
 
 // ==================== FRONTEND ROUTES ====================
 
+// Serve test/debug page
+app.get('/test.html', (req, res) => {
+  console.log('📄 Serving test.html');
+  res.sendFile(path.join(__dirname, 'public', 'test.html'));
+});
+
 // Serve directory page with company name from URL
 app.get('/directory/:companyName', (req, res) => {
+  console.log(`📄 Serving directory for company: ${req.params.companyName}`);
   res.sendFile(path.join(__dirname, 'public', 'directory.html'));
 });
 
 // Serve main page
 app.get('/', (req, res) => {
+  console.log('📄 Serving index.html');
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Fallback
+// Catch-all for other routes - MUST BE LAST
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  console.log(`📄 Catch-all route for: ${req.path}`);
+  // Only serve HTML for non-API routes
+  if (req.path.startsWith('/api/')) {
+    console.log(`❌ API route not found: ${req.path}`);
+    res.status(404).json({
+      success: false,
+      error: `API endpoint not found: ${req.path}`,
+      available_endpoints: [
+        'GET /health',
+        'GET /api/health', 
+        'GET /api/companies',
+        'GET /api/members/:companyName',
+        'POST /webhook/whop'
+      ]
+    });
+  } else {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  }
 });
 
 // ==================== START SERVER ====================

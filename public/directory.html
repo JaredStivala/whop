@@ -70,63 +70,6 @@
             opacity: 0.8;
         }
 
-        .company-selector {
-            background: rgba(39, 39, 42, 0.6);
-            padding: 30px;
-            border-radius: 12px;
-            margin-bottom: 30px;
-            text-align: center;
-        }
-
-        .company-selector h2 {
-            margin-bottom: 20px;
-            color: #fff;
-        }
-
-        .selector-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-top: 20px;
-        }
-
-        .company-option {
-            background: rgba(255, 255, 255, 0.05);
-            border: 2px solid rgba(255, 255, 255, 0.1);
-            border-radius: 8px;
-            padding: 20px;
-            cursor: pointer;
-            transition: all 0.3s;
-            text-align: center;
-        }
-
-        .company-option:hover {
-            background: rgba(255, 255, 255, 0.1);
-            border-color: #667eea;
-        }
-
-        .company-option.selected {
-            background: rgba(102, 126, 234, 0.2);
-            border-color: #667eea;
-        }
-
-        .company-name {
-            font-weight: 600;
-            margin-bottom: 5px;
-        }
-
-        .company-id {
-            font-size: 0.8rem;
-            color: #888;
-            font-family: monospace;
-        }
-
-        .member-count {
-            font-size: 0.9rem;
-            color: #60a5fa;
-            margin-top: 8px;
-        }
-
         .search-section {
             background: rgba(39, 39, 42, 0.6);
             padding: 20px;
@@ -142,6 +85,15 @@
             background: rgba(255, 255, 255, 0.05);
             color: white;
             font-size: 16px;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .search-input::placeholder {
+            color: #888;
         }
 
         .members-table {
@@ -165,6 +117,10 @@
             color: #aaa;
             text-transform: uppercase;
             font-size: 0.8rem;
+        }
+
+        .members-table tbody tr:hover {
+            background: rgba(255, 255, 255, 0.05);
         }
 
         .member-info {
@@ -214,6 +170,11 @@
             color: #ef4444;
         }
 
+        .no-members {
+            background: rgba(39, 39, 42, 0.6);
+            color: #888;
+        }
+
         .debug-info {
             background: rgba(59, 130, 246, 0.1);
             border: 1px solid rgba(59, 130, 246, 0.3);
@@ -222,22 +183,40 @@
             border-radius: 8px;
             margin: 20px 0;
             font-family: monospace;
-            font-size: 12px;
+            font-size: 14px;
         }
 
-        .btn-primary {
+        .retry-btn {
             background: #667eea;
             color: white;
             border: none;
-            padding: 12px 24px;
-            border-radius: 8px;
+            padding: 10px 20px;
+            border-radius: 6px;
             cursor: pointer;
+            margin-top: 15px;
             font-weight: 600;
-            margin-top: 20px;
         }
 
-        .btn-primary:hover {
+        .retry-btn:hover {
             background: #5a67d8;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .stats {
+                gap: 15px;
+            }
+
+            .members-table {
+                font-size: 14px;
+            }
         }
     </style>
 </head>
@@ -259,17 +238,6 @@
             </div>
         </div>
 
-        <div id="companySelector" class="company-selector">
-            <h2>Select Your Community</h2>
-            <p style="color: #888; margin-bottom: 20px;">Choose your Whop community to view its member directory:</p>
-            <div id="companiesGrid" class="selector-grid">
-                <div class="loading">Loading available communities...</div>
-            </div>
-            <button id="selectCompanyBtn" class="btn-primary" style="display: none;" onclick="selectCompany()">
-                View Member Directory
-            </button>
-        </div>
-
         <div id="searchSection" class="search-section" style="display: none;">
             <input 
                 type="text" 
@@ -281,7 +249,7 @@
 
         <div id="debugInfo" class="debug-info" style="display: none;"></div>
 
-        <div id="loadingState" class="loading" style="display: none;">
+        <div id="loadingState" class="loading">
             <h3>Loading members...</h3>
             <p>Please wait while we fetch the member directory.</p>
         </div>
@@ -308,155 +276,221 @@
     </div>
 
     <script>
-        class ImprovedMemberDirectory {
+        class SimpleMemberDirectory {
             constructor() {
                 this.members = [];
                 this.filteredMembers = [];
-                this.availableCompanies = [];
-                this.selectedCompanyId = null;
-                this.selectedCompanyName = null;
+                this.companyName = this.getCompanyName();
                 
-                console.log('🚀 Starting improved member directory');
+                console.log('🚀 Initializing Member Directory');
+                console.log('🔍 Company Name:', this.companyName);
+                console.log('🌐 Current URL:', window.location.href);
+                console.log('🔗 Parent URL:', document.referrer);
+                
+                this.showDebugInfo();
                 this.init();
             }
 
-            async init() {
-                this.showDebugInfo();
-                await this.loadAvailableCompanies();
-                this.setupEventListeners();
-            }
-
-            showDebugInfo() {
-                const debugInfo = {
-                    currentUrl: window.location.href,
-                    parentUrl: document.referrer,
-                    isInIframe: window.parent !== window,
-                    userAgent: navigator.userAgent,
-                    timestamp: new Date().toISOString()
-                };
+            // IMPROVED: Get company name from URL with better Whop detection
+            getCompanyName() {
+                console.log('🔍 Starting company detection...');
+                console.log('📍 Current URL:', window.location.href);
+                console.log('📍 Parent URL:', document.referrer);
+                console.log('📍 In iframe:', window.parent !== window);
                 
-                const debugElement = document.getElementById('debugInfo');
-                debugElement.style.display = 'block';
-                debugElement.innerHTML = `
-                    <strong>🔧 Debug Info:</strong><br>
-                    <strong>Current URL:</strong> ${debugInfo.currentUrl}<br>
-                    <strong>Parent URL:</strong> ${debugInfo.parentUrl}<br>
-                    <strong>In iframe:</strong> ${debugInfo.isInIframe}<br>
-                    <strong>User Agent:</strong> ${debugInfo.userAgent.substring(0, 80)}...
-                `;
-            }
-
-            async loadAvailableCompanies() {
-                try {
-                    console.log('🔍 Loading available companies...');
+                // Method 1: From URL path /directory/companyname
+                const pathMatch = window.location.pathname.match(/\/directory\/([^\/]+)/);
+                if (pathMatch) {
+                    console.log(`✅ Found company in path: ${pathMatch[1]}`);
+                    return pathMatch[1];
+                }
+                
+                // Method 2: From query parameter ?company=companyname
+                const urlParams = new URLSearchParams(window.location.search);
+                const queryCompany = urlParams.get('company');
+                if (queryCompany) {
+                    console.log(`✅ Found company in query: ${queryCompany}`);
+                    return queryCompany;
+                }
+                
+                // Method 3: From parent URL (when embedded in iframe) - IMPROVED
+                if (document.referrer) {
+                    console.log('🔍 Checking referrer:', document.referrer);
                     
-                    const response = await fetch('/api/companies');
-                    if (!response.ok) {
-                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    // Look for whop.com/companyname pattern
+                    const whopMatch = document.referrer.match(/whop\.com\/([^\/\?#]+)/);
+                    if (whopMatch && whopMatch[1]) {
+                        const companyFromUrl = whopMatch[1];
+                        console.log(`🎯 Found potential company from referrer: ${companyFromUrl}`);
+                        
+                        // Skip common non-company paths
+                        const skipPaths = ['app', 'apps', 'api', 'auth', 'login', 'signup', 'dashboard', 'admin', 'www', 'home'];
+                        if (!skipPaths.includes(companyFromUrl.toLowerCase())) {
+                            console.log(`✅ Using company from referrer: ${companyFromUrl}`);
+                            return companyFromUrl;
+                        } else {
+                            console.log(`❌ Skipping system path: ${companyFromUrl}`);
+                        }
                     }
                     
-                    const data = await response.json();
-                    console.log('✅ Companies loaded:', data);
-                    
-                    if (data.success && data.companies && data.companies.length > 0) {
-                        this.availableCompanies = data.companies;
-                        this.renderCompanySelector();
-                    } else {
-                        this.showError('No companies found in database. Please ensure your Whop webhook is configured and some members have joined.');
-                    }
-                    
-                } catch (error) {
-                    console.error('❌ Error loading companies:', error);
-                    this.showError(`Failed to load companies: ${error.message}`);
-                }
-            }
-
-            renderCompanySelector() {
-                const grid = document.getElementById('companiesGrid');
-                
-                grid.innerHTML = this.availableCompanies.map(company => `
-                    <div class="company-option" data-company-id="${company.company_id}" data-company-name="${company.company_name}" onclick="memberDirectory.selectCompanyOption('${company.company_id}', '${company.company_name}')">
-                        <div class="company-name">${this.escapeHtml(company.company_name)}</div>
-                        <div class="company-id">${this.escapeHtml(company.company_id)}</div>
-                        <div class="member-count">${company.member_count || 0} members</div>
-                    </div>
-                `).join('');
-                
-                // Auto-select if only one company or try to detect from URL
-                if (this.availableCompanies.length === 1) {
-                    const company = this.availableCompanies[0];
-                    this.selectCompanyOption(company.company_id, company.company_name);
-                } else {
-                    // Try to auto-detect from URL context
-                    this.tryAutoDetectCompany();
-                }
-            }
-
-            tryAutoDetectCompany() {
-                // Try to match company name from URL patterns
-                const urlPatterns = [
-                    window.location.href,
-                    document.referrer,
-                    window.location.pathname
-                ].filter(Boolean);
-                
-                for (const url of urlPatterns) {
-                    for (const company of this.availableCompanies) {
-                        if (url.includes(company.company_name) || url.includes(company.company_id)) {
-                            console.log(`🎯 Auto-detected company: ${company.company_name} from URL: ${url}`);
-                            this.selectCompanyOption(company.company_id, company.company_name);
-                            return;
+                    // Also try to extract from longer URLs like whop.com/jaredstivala/something/else
+                    const longerMatch = document.referrer.match(/whop\.com\/([^\/]+)\/[^\/]*\/[^\/]*/);
+                    if (longerMatch && longerMatch[1]) {
+                        const companyFromLongerUrl = longerMatch[1];
+                        console.log(`🎯 Found company from longer URL pattern: ${companyFromLongerUrl}`);
+                        
+                        const skipPaths = ['app', 'apps', 'api', 'auth', 'login', 'signup', 'dashboard', 'admin', 'www', 'home'];
+                        if (!skipPaths.includes(companyFromLongerUrl.toLowerCase())) {
+                            console.log(`✅ Using company from longer URL: ${companyFromLongerUrl}`);
+                            return companyFromLongerUrl;
                         }
                     }
                 }
                 
-                console.log('🤷 Could not auto-detect company, showing selector');
-            }
-
-            selectCompanyOption(companyId, companyName) {
-                // Update UI
-                document.querySelectorAll('.company-option').forEach(el => {
-                    el.classList.remove('selected');
-                });
-                
-                const selectedElement = document.querySelector(`[data-company-id="${companyId}"]`);
-                if (selectedElement) {
-                    selectedElement.classList.add('selected');
+                // Method 4: Try to get from window.parent if accessible
+                try {
+                    if (window.parent !== window && window.parent.location) {
+                        const parentUrl = window.parent.location.href;
+                        console.log('🔍 Checking parent window URL:', parentUrl);
+                        
+                        const parentMatch = parentUrl.match(/whop\.com\/([^\/\?#]+)/);
+                        if (parentMatch && parentMatch[1] !== 'app' && parentMatch[1] !== 'www') {
+                            console.log(`✅ Found company from parent window: ${parentMatch[1]}`);
+                            return parentMatch[1];
+                        }
+                    }
+                } catch (e) {
+                    console.log('❌ Cannot access parent window (cross-origin)');
                 }
                 
-                // Store selection
-                this.selectedCompanyId = companyId;
-                this.selectedCompanyName = companyName;
+                // Method 5: From current URL (for testing)
+                const currentMatch = window.location.href.match(/whop\.com\/([^\/\?#]+)/);
+                if (currentMatch && currentMatch[1] !== 'app' && currentMatch[1] !== 'www') {
+                    console.log(`✅ Found company from current URL: ${currentMatch[1]}`);
+                    return currentMatch[1];
+                }
                 
-                // Show select button
-                document.getElementById('selectCompanyBtn').style.display = 'block';
-                
-                console.log(`✅ Selected company: ${companyName} (${companyId})`);
+                console.log('❌ No company name found in any URL');
+                return null;
             }
 
-            async selectCompany() {
-                if (!this.selectedCompanyId || !this.selectedCompanyName) {
-                    alert('Please select a company first');
+            showDebugInfo() {
+                const debugElement = document.getElementById('debugInfo');
+                debugElement.style.display = 'block';
+                debugElement.innerHTML = `
+                    <strong>Debug Info:</strong><br>
+                    Company Name: ${this.companyName || 'None found'}<br>
+                    Current URL: ${window.location.href}<br>
+                    Parent URL: ${document.referrer || 'None'}<br>
+                    Path: ${window.location.pathname}<br>
+                    Search: ${window.location.search}
+                `;
+            }
+
+            async init() {
+                if (!this.companyName) {
+                    console.log('❌ No company detected, checking available companies...');
+                    await this.showAvailableCompanies();
                     return;
                 }
                 
-                // Hide selector, show loading
-                document.getElementById('companySelector').style.display = 'none';
-                document.getElementById('loadingState').style.display = 'block';
+                document.getElementById('companyInfo').textContent = `Company: ${this.companyName}`;
+                
+                // Try to load members - if it fails, show company selector
+                try {
+                    await this.loadMembers();
+                    this.setupEventListeners();
+                } catch (error) {
+                    console.log('❌ Failed to load members, showing company selector...');
+                    await this.showAvailableCompanies();
+                }
+            }
+
+            async showAvailableCompanies() {
+                try {
+                    console.log('🔍 Loading available companies for selection...');
+                    const response = await fetch('/api/companies');
+                    
+                    if (!response.ok) {
+                        throw new Error('Failed to load companies');
+                    }
+                    
+                    const data = await response.json();
+                    console.log('📋 Available companies:', data);
+                    
+                    if (data.success && data.companies && data.companies.length > 0) {
+                        this.renderCompanySelector(data.companies);
+                    } else {
+                        this.showError('No companies found. Please ensure your Whop webhook is set up and members have joined.');
+                    }
+                    
+                } catch (error) {
+                    console.error('❌ Error loading companies:', error);
+                    this.showError('Unable to load companies. Please try again later.');
+                }
+            }
+
+            renderCompanySelector(companies) {
+                const container = document.querySelector('.container');
+                const headerElement = container.querySelector('.header');
                 
                 // Update header
-                document.getElementById('companyInfo').textContent = `${this.selectedCompanyName} (${this.selectedCompanyId})`;
+                headerElement.innerHTML = `
+                    <h1>Member Directory</h1>
+                    <p style="margin-bottom: 20px;">Select your community:</p>
+                    <div class="company-selector" style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 12px;">
+                        <div id="companiesList" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+                            ${companies.map(company => `
+                                <div class="company-option" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 15px; cursor: pointer; transition: all 0.3s;" onclick="memberDirectory.selectCompany('${company.company_name}')">
+                                    <div style="font-weight: 600; margin-bottom: 5px;">${this.escapeHtml(company.company_name)}</div>
+                                    <div style="font-size: 0.8rem; color: #888; font-family: monospace;">${this.escapeHtml(company.company_id)}</div>
+                                    <div style="font-size: 0.9rem; color: #60a5fa; margin-top: 8px;">${company.member_count || 0} members</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
                 
-                // Load members
-                await this.loadMembers();
+                // Add hover effects via CSS
+                const style = document.createElement('style');
+                style.textContent = `
+                    .company-option:hover {
+                        background: rgba(255,255,255,0.1) !important;
+                        border-color: #667eea !important;
+                        transform: translateY(-2px);
+                    }
+                `;
+                document.head.appendChild(style);
+                
+                // Hide other sections
+                document.getElementById('loadingState').style.display = 'none';
+                document.getElementById('searchSection').style.display = 'none';
+                document.getElementById('membersTable').style.display = 'none';
+                document.getElementById('errorState').style.display = 'none';
+                document.getElementById('noMembersState').style.display = 'none';
+            }
+
+            selectCompany(companyName) {
+                console.log(`✅ User selected company: ${companyName}`);
+                this.companyName = companyName;
+                
+                // Reload the page with the selected company
+                const newUrl = `/directory/${companyName}`;
+                window.location.href = newUrl;
             }
 
             async loadMembers() {
                 try {
-                    console.log(`🔍 Loading members for: ${this.selectedCompanyName}`);
+                    console.log(`🔍 Loading members for: ${this.companyName}`);
                     
-                    // Use company_id directly instead of company_name for more reliable lookup
-                    const response = await fetch(`/api/members/${encodeURIComponent(this.selectedCompanyName)}`);
+                    // Try the new endpoint first
+                    let response = await fetch(`/api/directory/${encodeURIComponent(this.companyName)}`);
+                    
+                    // Fallback to members endpoint if directory doesn't exist
+                    if (!response.ok && response.status === 404) {
+                        console.log('🔄 Trying fallback endpoint...');
+                        response = await fetch(`/api/members/${encodeURIComponent(this.companyName)}`);
+                    }
                     
                     if (!response.ok) {
                         const errorData = await response.json();
@@ -464,11 +498,14 @@
                     }
                     
                     const data = await response.json();
-                    console.log('✅ Members loaded:', data);
+                    console.log('✅ API Response:', data);
                     
                     if (data.success) {
                         this.members = data.members || [];
                         this.filteredMembers = [...this.members];
+                        
+                        document.getElementById('companyInfo').textContent = 
+                            `${data.company_name} (${data.company_id}) • ${this.members.length} members`;
                         
                         this.updateStats();
                         this.renderMembers();
@@ -577,7 +614,6 @@
 
             showError(message) {
                 document.getElementById('loadingState').style.display = 'none';
-                document.getElementById('companySelector').style.display = 'none';
                 document.getElementById('membersTable').style.display = 'none';
                 document.getElementById('noMembersState').style.display = 'none';
                 document.getElementById('searchSection').style.display = 'none';
@@ -587,7 +623,8 @@
                 errorElement.innerHTML = `
                     <h3>Error Loading Directory</h3>
                     <p>${this.escapeHtml(message)}</p>
-                    <button class="btn-primary" onclick="location.reload()">Retry</button>
+                    <p style="margin-top: 10px; font-size: 14px;">Company: ${this.companyName || 'Unknown'}</p>
+                    <button class="retry-btn" onclick="location.reload()">Retry</button>
                 `;
             }
 
@@ -611,15 +648,17 @@
             }
         }
 
-        // Global functions
-        function selectCompany() {
-            window.memberDirectory.selectCompany();
-        }
-
         // Initialize when page loads
         document.addEventListener('DOMContentLoaded', () => {
-            window.memberDirectory = new ImprovedMemberDirectory();
+            window.memberDirectory = new SimpleMemberDirectory();
         });
+
+        // Global function for company selection
+        window.selectCompany = function(companyName) {
+            if (window.memberDirectory) {
+                window.memberDirectory.selectCompany(companyName);
+            }
+        };
     </script>
 </body>
 </html>

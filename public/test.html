@@ -192,11 +192,21 @@
                 >
                 <button onclick="testMemberLookup()">Test Lookup</button>
             </div>
+            <div style="margin: 10px 0;">
+                <button onclick="testCompany('jaredstivala')">Test jaredstivala</button>
+                <button onclick="testCompany('jaredsuniverse')">Test jaredsuniverse</button>
+            </div>
             <div id="membersResult" class="result" style="display: none;"></div>
         </div>
 
         <div class="section">
-            <h2>4. 🔗 URL Detection Test</h2>
+            <h2>4. 🔧 Database Debug</h2>
+            <button onclick="testDirectAPI('/api/debug/database')">Check Database Contents</button>
+            <div id="databaseResult" class="result" style="display: none;"></div>
+        </div>
+
+        <div class="section">
+            <h2>5. 🔗 URL Detection Test</h2>
             <button onclick="testUrlDetection()">Test Current URL Detection</button>
             <div id="urlResult" class="result" style="display: none;"></div>
             
@@ -211,7 +221,7 @@
         </div>
 
         <div class="section">
-            <h2>5. 🌐 Direct API Tests</h2>
+            <h2>6. 🌐 Direct API Tests</h2>
             <div style="margin-bottom: 10px;">
                 <button onclick="testDirectAPI('/api/health')">Test /api/health</button>
                 <button onclick="testDirectAPI('/health')">Test /health</button>
@@ -312,7 +322,13 @@
         }
 
         async function testDirectAPI(endpoint) {
-            await makeApiCall(endpoint, 'directApiResult');
+            let resultElementId;
+            if (endpoint.includes('database')) {
+                resultElementId = 'databaseResult';
+            } else {
+                resultElementId = 'directApiResult';
+            }
+            await makeApiCall(endpoint, resultElementId);
         }
 
         async function makeApiCall(endpoint, resultElementId) {
@@ -363,6 +379,7 @@
             testHealthCheck();
             setTimeout(() => {
                 loadCompanies();
+                testDirectAPI('/api/debug/database'); // Test the database debug endpoint
             }, 1000);
         });
     </script>

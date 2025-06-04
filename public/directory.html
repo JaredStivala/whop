@@ -283,7 +283,7 @@
                 this.companyName = this.getCompanyName();
                 
                 console.log('🚀 Initializing Member Directory');
-                console.log('🔍 Company Name:', this.companyName);
+                console.log('🔍 Detected Company Name:', this.companyName);
                 console.log('🌐 Current URL:', window.location.href);
                 console.log('🔗 Parent URL:', document.referrer);
                 
@@ -370,8 +370,8 @@
                     return currentMatch[1];
                 }
                 
-                console.log('❌ No company name found in any URL');
-                return null;
+                console.log('❌ No company name found in any URL - will show company selector');
+                return null; // Return null instead of hardcoded fallback
             }
 
             showDebugInfo() {

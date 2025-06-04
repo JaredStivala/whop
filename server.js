@@ -179,24 +179,33 @@ app.get('/api/members/:companyName', async (req, res) => {
   }
 });
 
-// Debug endpoint to see all companies
+// Debug endpoint to see all companies - FIXED
 app.get('/api/companies', async (req, res) => {
   try {
+    console.log('🔍 Loading all companies...');
+    
     const result = await pool.query(`
       SELECT 
         c.company_id, 
         c.company_name,
+        c.created_at,
         COUNT(m.id) as member_count
       FROM whop_companies c
       LEFT JOIN whop_members m ON c.company_id = m.company_id
-      GROUP BY c.company_id, c.company_name
+      GROUP BY c.company_id, c.company_name, c.created_at
       ORDER BY c.company_name
     `);
+    
+    console.log(`✅ Found ${result.rows.length} companies:`, result.rows);
+    
     res.json({
       success: true,
-      companies: result.rows
+      companies: result.rows,
+      count: result.rows.length,
+      timestamp: new Date().toISOString()
     });
   } catch (error) {
+    console.error('❌ Error loading companies:', error);
     res.status(500).json({
       success: false,
       error: error.message
@@ -400,8 +409,9 @@ app.get('*', (req, res) => {
         'GET /health',
         'GET /api/health', 
         'GET /api/companies',
-        'GET /api/directory/:companyName',  // <- Added this
+        'GET /api/directory/:companyName',  
         'GET /api/members/:companyName',
+        'GET /api/debug/database',  // <- Added this
         'POST /webhook/whop'
       ]
     });
@@ -427,6 +437,7 @@ app.listen(port, () => {
   console.log('');
   console.log('🔧 Debug:');
   console.log('   GET  /test.html                     - Debug/test page');
+  console.log('   GET  /api/debug/database            - Check database contents');
   console.log('');
 });
 

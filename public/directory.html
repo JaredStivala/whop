@@ -13,24 +13,24 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f8fafc;
-            color: #1e293b;
+            background: #0a0a0a;
+            color: #ffffff;
             line-height: 1.6;
+            min-height: 100vh;
         }
 
-        .directory-container {
+        .container {
             max-width: 1200px;
             margin: 0 auto;
             padding: 20px;
         }
 
         .header {
-            text-align: center;
-            margin-bottom: 40px;
-            padding: 40px 20px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 16px;
-            color: white;
+            border-radius: 12px;
+            padding: 30px;
+            text-align: center;
+            margin-bottom: 30px;
         }
 
         .header h1 {
@@ -39,31 +39,24 @@
             font-weight: 700;
         }
 
-        .header p {
+        .company-info {
             font-size: 1.1rem;
             opacity: 0.9;
-        }
-
-        .company-info {
-            font-size: 0.9rem;
-            opacity: 0.8;
-            margin-top: 10px;
+            margin-bottom: 20px;
         }
 
         .stats {
             display: flex;
             justify-content: center;
             gap: 30px;
-            margin: 30px 0;
             flex-wrap: wrap;
         }
 
         .stat-item {
             background: rgba(255, 255, 255, 0.1);
             padding: 15px 25px;
-            border-radius: 12px;
+            border-radius: 8px;
             text-align: center;
-            backdrop-filter: blur(10px);
         }
 
         .stat-number {
@@ -77,21 +70,21 @@
             opacity: 0.8;
         }
 
-        .search-filter {
-            background: white;
-            padding: 25px;
+        .search-section {
+            background: rgba(39, 39, 42, 0.6);
+            padding: 20px;
             border-radius: 12px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
             margin-bottom: 30px;
         }
 
         .search-input {
             width: 100%;
-            padding: 15px 20px;
-            border: 2px solid #e5e7eb;
+            padding: 12px 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 8px;
-            font-size: 1rem;
-            transition: border-color 0.2s;
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+            font-size: 16px;
         }
 
         .search-input:focus {
@@ -99,115 +92,117 @@
             border-color: #667eea;
         }
 
-        .members-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-            gap: 25px;
-            margin-bottom: 40px;
+        .search-input::placeholder {
+            color: #888;
         }
 
-        .member-card {
-            background: white;
-            border-radius: 16px;
-            padding: 25px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            transition: transform 0.2s, box-shadow 0.2s;
-            border: 1px solid #f1f5f9;
+        .members-table {
+            width: 100%;
+            background: rgba(39, 39, 42, 0.6);
+            border-radius: 12px;
+            overflow: hidden;
+            border-collapse: collapse;
         }
 
-        .member-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15);
+        .members-table th,
+        .members-table td {
+            text-align: left;
+            padding: 15px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .members-table th {
+            background: rgba(24, 24, 27, 0.8);
+            font-weight: 600;
+            color: #aaa;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+        }
+
+        .members-table tbody tr:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .member-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
         }
 
         .member-avatar {
-            width: 60px;
-            height: 60px;
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
             background: linear-gradient(135deg, #667eea, #764ba2);
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
-            font-size: 1.5rem;
-            font-weight: 700;
-            margin-bottom: 15px;
+            font-weight: 600;
+            font-size: 14px;
         }
 
         .member-name {
-            font-size: 1.3rem;
             font-weight: 600;
-            margin-bottom: 8px;
-            color: #1e293b;
+            margin-bottom: 2px;
         }
 
         .member-email {
-            color: #64748b;
-            margin-bottom: 15px;
+            color: #888;
             font-size: 0.9rem;
         }
 
-        .member-details {
-            border-top: 1px solid #f1f5f9;
-            padding-top: 15px;
-        }
-
-        .detail-item {
-            margin-bottom: 10px;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-
-        .detail-label {
-            font-weight: 600;
-            color: #374151;
-            min-width: 80px;
-        }
-
-        .detail-value {
-            color: #6b7280;
-            flex: 1;
-        }
-
-        .joined-date {
-            font-size: 0.8rem;
-            color: #9ca3af;
-            text-align: right;
-            margin-top: 15px;
-            font-style: italic;
-        }
-
-        .loading {
+        .loading, .error, .no-members {
             text-align: center;
             padding: 60px 20px;
-            font-size: 1.1rem;
-            color: #64748b;
-        }
-
-        .error {
-            background: #fef2f2;
-            border: 1px solid #fecaca;
-            color: #dc2626;
-            padding: 20px;
-            border-radius: 8px;
-            text-align: center;
+            border-radius: 12px;
             margin: 20px 0;
         }
 
-        .no-members {
-            text-align: center;
-            padding: 60px 20px;
-            color: #64748b;
+        .loading {
+            background: rgba(39, 39, 42, 0.6);
+            color: #888;
         }
 
-        .no-members h3 {
-            font-size: 1.5rem;
-            margin-bottom: 10px;
+        .error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #ef4444;
+        }
+
+        .no-members {
+            background: rgba(39, 39, 42, 0.6);
+            color: #888;
+        }
+
+        .debug-info {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            color: #60a5fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            font-family: monospace;
+            font-size: 14px;
+        }
+
+        .retry-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-top: 15px;
+            font-weight: 600;
+        }
+
+        .retry-btn:hover {
+            background: #5a67d8;
         }
 
         @media (max-width: 768px) {
-            .directory-container {
+            .container {
                 padding: 15px;
             }
 
@@ -215,64 +210,21 @@
                 font-size: 2rem;
             }
 
-            .members-grid {
-                grid-template-columns: 1fr;
-            }
-
             .stats {
                 gap: 15px;
             }
 
-            .stat-item {
-                padding: 10px 20px;
+            .members-table {
+                font-size: 14px;
             }
-        }
-
-        .company-selector {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 20px;
-            border-radius: 12px;
-            margin-bottom: 30px;
-            text-align: center;
-        }
-
-        .company-selector input {
-            padding: 10px 15px;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 8px;
-            background: rgba(255, 255, 255, 0.9);
-            margin-right: 10px;
-            font-size: 14px;
-        }
-
-        .company-selector button {
-            padding: 10px 20px;
-            background: rgba(255, 255, 255, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 8px;
-            color: white;
-            cursor: pointer;
-            font-weight: 600;
-        }
-
-        .company-selector button:hover {
-            background: rgba(255, 255, 255, 0.3);
         }
     </style>
 </head>
 <body>
-    <div class="directory-container">
+    <div class="container">
         <div class="header">
-            <h1 id="groupName">Member Directory</h1>
-            <p>Connect with fellow community members</p>
-            <div class="company-info" id="companyInfo"></div>
-            
-            <!-- Company selector (shown when no company ID) -->
-            <div class="company-selector" id="companySelector" style="display: none;">
-                <p style="margin-bottom: 15px;">Enter your company name to view the member directory:</p>
-                <input type="text" id="companyInput" placeholder="e.g., jaredstivala..." />
-                <button onclick="setCompanyId()">View Directory</button>
-            </div>
+            <h1>Member Directory</h1>
+            <div id="companyInfo" class="company-info">Loading...</div>
             
             <div class="stats">
                 <div class="stat-item">
@@ -286,158 +238,151 @@
             </div>
         </div>
 
-        <div class="search-filter" id="searchSection" style="display: none;">
+        <div id="searchSection" class="search-section" style="display: none;">
             <input 
                 type="text" 
-                class="search-input" 
-                placeholder="Search members by name, email, or responses..."
                 id="searchInput"
+                class="search-input" 
+                placeholder="Search members by name or email..."
             >
         </div>
 
+        <div id="debugInfo" class="debug-info" style="display: none;"></div>
+
         <div id="loadingState" class="loading">
-            Loading members...
+            <h3>Loading members...</h3>
+            <p>Please wait while we fetch the member directory.</p>
         </div>
 
         <div id="errorState" class="error" style="display: none;">
-            Failed to load members. Please try again later.
         </div>
 
         <div id="noMembersState" class="no-members" style="display: none;">
             <h3>No members found</h3>
-            <p>Be the first to join this community!</p>
+            <p>This community doesn't have any members yet.</p>
         </div>
 
-        <div id="membersGrid" class="members-grid" style="display: none;">
-        </div>
+        <table id="membersTable" class="members-table" style="display: none;">
+            <thead>
+                <tr>
+                    <th>Member</th>
+                    <th>Custom Fields</th>
+                    <th>Joined</th>
+                </tr>
+            </thead>
+            <tbody id="membersTableBody">
+            </tbody>
+        </table>
     </div>
 
     <script>
-        class MemberDirectory {
+        class SimpleMemberDirectory {
             constructor() {
                 this.members = [];
                 this.filteredMembers = [];
-                this.companyId = this.getCompanyFromUrl();
-                this.apiBaseUrl = this.getApiBaseUrl();
+                this.companyName = this.getCompanyName();
                 
+                console.log('🚀 Initializing Member Directory');
+                console.log('🔍 Company Name:', this.companyName);
+                console.log('🌐 Current URL:', window.location.href);
+                console.log('🔗 Parent URL:', document.referrer);
+                
+                this.showDebugInfo();
                 this.init();
             }
 
-            // SIMPLIFIED: Get company name from URL directly
-            getCompanyFromUrl() {
-                // 1. Check URL path for /directory/:companyId
+            // SIMPLIFIED: Get company name from URL
+            getCompanyName() {
+                // Method 1: From URL path /directory/companyname
                 const pathMatch = window.location.pathname.match(/\/directory\/([^\/]+)/);
                 if (pathMatch) {
+                    console.log(`✅ Found company in path: ${pathMatch[1]}`);
                     return pathMatch[1];
                 }
                 
-                // 2. Check URL query parameter ?company=...
+                // Method 2: From query parameter ?company=companyname
                 const urlParams = new URLSearchParams(window.location.search);
-                const queryCompany = urlParams.get('company') || urlParams.get('companyId');
-                if (queryCompany && queryCompany !== 'demo') {
+                const queryCompany = urlParams.get('company');
+                if (queryCompany) {
+                    console.log(`✅ Found company in query: ${queryCompany}`);
                     return queryCompany;
                 }
                 
-                // 3. Check URL hash #company=...
-                const hashMatch = window.location.hash.match(/[#&]company=([^&]+)/);
-                if (hashMatch) {
-                    return hashMatch[1];
-                }
-                
-                // 4. Extract from whop.com/{company} pattern if we're in iframe
-                if (window.parent !== window && document.referrer) {
-                    try {
-                        const parentUrl = document.referrer;
-                        const match = parentUrl.match(/whop\.com\/([^\/]+)/);
-                        if (match) {
-                            const companyName = match[1];
-                            console.log(`✅ Found company from parent URL: ${companyName}`);
-                            return companyName;
-                        }
-                    } catch (error) {
-                        console.warn('Could not access parent URL:', error);
+                // Method 3: From parent URL (when embedded in iframe)
+                if (document.referrer) {
+                    const match = document.referrer.match(/whop\.com\/([^\/\?#]+)/);
+                    if (match && match[1] !== 'app' && match[1] !== 'www') {
+                        console.log(`✅ Found company from referrer: ${match[1]}`);
+                        return match[1];
                     }
                 }
                 
-                // 5. Check current URL
-                const currentUrl = window.location.href;
-                const currentMatch = currentUrl.match(/whop\.com\/([^\/]+)/);
-                if (currentMatch) {
-                    const companyName = currentMatch[1];
-                    console.log(`✅ Found company from current URL: ${companyName}`);
-                    return companyName;
+                // Method 4: From current URL (for testing)
+                const currentMatch = window.location.href.match(/whop\.com\/([^\/\?#]+)/);
+                if (currentMatch && currentMatch[1] !== 'app' && currentMatch[1] !== 'www') {
+                    console.log(`✅ Found company from current URL: ${currentMatch[1]}`);
+                    return currentMatch[1];
                 }
                 
+                console.log('❌ No company name found in URL');
                 return null;
             }
 
-            getApiBaseUrl() {
-                // Auto-detect API base URL based on current domain
-                const currentDomain = window.location.origin;
-                return currentDomain.includes('localhost') ? 'http://localhost:3000' : currentDomain;
-            }
-
-            showCompanySelector() {
-                document.getElementById('companySelector').style.display = 'block';
-                document.getElementById('loadingState').style.display = 'none';
-                document.getElementById('companyInfo').textContent = 'Please enter your company name to continue';
-                
-                // Set up enter key listener
-                document.getElementById('companyInput').addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter') {
-                        this.setCompanyIdAndRedirect();
-                    }
-                });
-            }
-
-            setCompanyIdAndRedirect() {
-                const input = document.getElementById('companyInput');
-                const companyId = input.value.trim();
-                
-                if (!companyId) {
-                    alert('Please enter a company name');
-                    return;
-                }
-                
-                // Redirect to the directory with company ID
-                window.location.href = `${window.location.origin}/directory/${companyId}`;
+            showDebugInfo() {
+                const debugElement = document.getElementById('debugInfo');
+                debugElement.style.display = 'block';
+                debugElement.innerHTML = `
+                    <strong>Debug Info:</strong><br>
+                    Company Name: ${this.companyName || 'None found'}<br>
+                    Current URL: ${window.location.href}<br>
+                    Parent URL: ${document.referrer || 'None'}<br>
+                    Path: ${window.location.pathname}<br>
+                    Search: ${window.location.search}
+                `;
             }
 
             async init() {
-                if (!this.companyId) {
-                    this.showCompanySelector();
+                if (!this.companyName) {
+                    this.showError('No company name found in URL. Please access this page through Whop or add ?company=yourcompany to the URL.');
                     return;
                 }
                 
-                document.getElementById('companyInfo').textContent = `Company: ${this.companyId}`;
+                document.getElementById('companyInfo').textContent = `Company: ${this.companyName}`;
                 await this.loadMembers();
                 this.setupEventListeners();
             }
 
             async loadMembers() {
                 try {
-                    console.log(`🔍 Loading members for company: ${this.companyId}`);
-                    const response = await fetch(`${this.apiBaseUrl}/api/members/${this.companyId}`);
+                    console.log(`🔍 Loading members for: ${this.companyName}`);
+                    
+                    const response = await fetch(`/api/members/${encodeURIComponent(this.companyName)}`);
+                    console.log('📡 Response status:', response.status);
                     
                     if (!response.ok) {
-                        if (response.status === 400) {
-                            throw new Error('Invalid company ID provided');
-                        } else if (response.status === 404) {
-                            throw new Error('Company not found or no members yet');
-                        }
-                        throw new Error('Failed to fetch members');
+                        const errorData = await response.json();
+                        throw new Error(errorData.error || `HTTP ${response.status}`);
                     }
-
-                    const data = await response.json();
-                    this.members = data.members || [];
-                    this.filteredMembers = [...this.members];
                     
-                    this.updateStats();
-                    this.renderMembers();
-                    this.showContent();
+                    const data = await response.json();
+                    console.log('✅ API Response:', data);
+                    
+                    if (data.success) {
+                        this.members = data.members || [];
+                        this.filteredMembers = [...this.members];
+                        
+                        document.getElementById('companyInfo').textContent = 
+                            `${data.company_name} (${data.company_id}) • ${this.members.length} members`;
+                        
+                        this.updateStats();
+                        this.renderMembers();
+                        this.showContent();
+                    } else {
+                        throw new Error(data.error || 'Unknown error');
+                    }
                     
                 } catch (error) {
-                    console.error('Error loading members:', error);
+                    console.error('❌ Error loading members:', error);
                     this.showError(error.message);
                 }
             }
@@ -448,7 +393,7 @@
                 const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
                 
                 const newThisMonth = this.members.filter(member => 
-                    new Date(member.joined_at) > thirtyDaysAgo
+                    member.joined_at && new Date(member.joined_at) > thirtyDaysAgo
                 ).length;
 
                 document.getElementById('totalMembers').textContent = totalMembers;
@@ -456,66 +401,50 @@
             }
 
             renderMembers() {
-                const grid = document.getElementById('membersGrid');
+                const tableBody = document.getElementById('membersTableBody');
                 
                 if (this.filteredMembers.length === 0) {
                     this.showNoMembers();
                     return;
                 }
 
-                grid.innerHTML = this.filteredMembers.map(member => this.createMemberCard(member)).join('');
-            }
+                tableBody.innerHTML = this.filteredMembers.map(member => {
+                    const name = member.name || member.username || 'Anonymous';
+                    const email = member.email || 'No email';
+                    const avatar = name.charAt(0).toUpperCase();
+                    const joinedDate = member.joined_at ? 
+                        new Date(member.joined_at).toLocaleDateString() : 'Unknown';
+                    
+                    // Format custom fields
+                    let customFieldsText = 'No custom fields';
+                    if (member.custom_fields && Object.keys(member.custom_fields).length > 0) {
+                        customFieldsText = Object.entries(member.custom_fields)
+                            .map(([key, value]) => `${key}: ${value}`)
+                            .join(', ');
+                    }
 
-            createMemberCard(member) {
-                const name = member.name || member.username || 'Anonymous Member';
-                const email = member.email || 'No email provided';
-                const avatar = name.charAt(0).toUpperCase();
-                const joinedDate = new Date(member.joined_at).toLocaleDateString();
+                    return `
+                        <tr>
+                            <td>
+                                <div class="member-info">
+                                    <div class="member-avatar">${avatar}</div>
+                                    <div>
+                                        <div class="member-name">${this.escapeHtml(name)}</div>
+                                        <div class="member-email">${this.escapeHtml(email)}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div style="font-size: 0.9rem; color: #ccc;">
+                                    ${this.escapeHtml(customFieldsText)}
+                                </div>
+                            </td>
+                            <td>${joinedDate}</td>
+                        </tr>
+                    `;
+                }).join('');
                 
-                // Parse waitlist responses
-                const responses = member.waitlist_responses || member.custom_fields || {};
-                const responseItems = Object.entries(responses)
-                    .filter(([key, value]) => 
-                        value && 
-                        value.toString().trim() && 
-                        !['status', 'error', 'note', 'raw_indicator', 'raw_length', 'source'].includes(key)
-                    )
-                    .map(([key, value]) => `
-                        <div class="detail-item">
-                            <span class="detail-label">${this.formatLabel(key)}:</span>
-                            <span class="detail-value">${this.escapeHtml(value.toString())}</span>
-                        </div>
-                    `).join('');
-
-                return `
-                    <div class="member-card">
-                        <div class="member-avatar">${avatar}</div>
-                        <div class="member-name">${this.escapeHtml(name)}</div>
-                        <div class="member-email">${this.escapeHtml(email)}</div>
-                        
-                        ${responseItems ? `
-                            <div class="member-details">
-                                ${responseItems}
-                            </div>
-                        ` : ''}
-                        
-                        <div class="joined-date">Joined ${joinedDate}</div>
-                    </div>
-                `;
-            }
-
-            formatLabel(key) {
-                return key.replace(/_/g, ' ')
-                         .replace(/\b\w/g, l => l.toUpperCase());
-            }
-
-            escapeHtml(unsafe) {
-                return unsafe
-                    .replace(/&/g, "&amp;")
-                    .replace(/</g, "&lt;")
-                    .replace(/>/g, "&gt;")
-                    .replace(/"/g, "&quot;")
-                    .replace(/'/g, "&#039;");
+                document.getElementById('membersTable').style.display = 'table';
             }
 
             setupEventListeners() {
@@ -534,11 +463,8 @@
                     this.filteredMembers = this.members.filter(member => {
                         const name = (member.name || member.username || '').toLowerCase();
                         const email = (member.email || '').toLowerCase();
-                        const responses = JSON.stringify(member.waitlist_responses || member.custom_fields || {}).toLowerCase();
                         
-                        return name.includes(term) || 
-                               email.includes(term) || 
-                               responses.includes(term);
+                        return name.includes(term) || email.includes(term);
                     });
                 }
                 
@@ -550,12 +476,12 @@
                 document.getElementById('errorState').style.display = 'none';
                 document.getElementById('noMembersState').style.display = 'none';
                 document.getElementById('searchSection').style.display = 'block';
-                document.getElementById('membersGrid').style.display = 'grid';
+                document.getElementById('debugInfo').style.display = 'none';
             }
 
             showError(message) {
                 document.getElementById('loadingState').style.display = 'none';
-                document.getElementById('membersGrid').style.display = 'none';
+                document.getElementById('membersTable').style.display = 'none';
                 document.getElementById('noMembersState').style.display = 'none';
                 document.getElementById('searchSection').style.display = 'none';
                 
@@ -564,40 +490,35 @@
                 errorElement.innerHTML = `
                     <h3>Error Loading Directory</h3>
                     <p>${this.escapeHtml(message)}</p>
-                    <p style="margin-top: 10px; font-size: 14px;">Company: ${this.companyId}</p>
-                    <button onclick="location.reload()" style="margin-top: 15px; padding: 8px 16px; background: #dc2626; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                        Retry
-                    </button>
+                    <p style="margin-top: 10px; font-size: 14px;">Company: ${this.companyName || 'Unknown'}</p>
+                    <button class="retry-btn" onclick="location.reload()">Retry</button>
                 `;
             }
 
             showNoMembers() {
                 document.getElementById('loadingState').style.display = 'none';
-                document.getElementById('membersGrid').style.display = 'none';
+                document.getElementById('membersTable').style.display = 'none';
                 document.getElementById('errorState').style.display = 'none';
                 document.getElementById('searchSection').style.display = 'none';
                 document.getElementById('noMembersState').style.display = 'block';
             }
-        }
 
-        // Global function for company selector
-        function setCompanyId() {
-            if (window.memberDirectory) {
-                window.memberDirectory.setCompanyIdAndRedirect();
+            escapeHtml(text) {
+                const map = {
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#039;'
+                };
+                return text.replace(/[&<>"']/g, m => map[m]);
             }
         }
 
-        // Initialize the directory when page loads
+        // Initialize when page loads
         document.addEventListener('DOMContentLoaded', () => {
-            window.memberDirectory = new MemberDirectory();
+            window.memberDirectory = new SimpleMemberDirectory();
         });
-
-        // Auto-refresh every 5 minutes to keep data current
-        setInterval(() => {
-            if (window.memberDirectory && window.memberDirectory.companyId) {
-                window.memberDirectory.loadMembers();
-            }
-        }, 5 * 60 * 1000);
     </script>
 </body>
 </html>

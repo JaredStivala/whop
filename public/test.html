@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Member Directory - Test/Debug</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0a;
+            color: #ffffff;
+            line-height: 1.6;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .section {
+            background: rgba(39, 39, 42, 0.6);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        h1, h2 {
+            margin-bottom: 15px;
+            color: #fff;
+        }
+
+        .test-form {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        input {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 6px;
+            flex: 1;
+            min-width: 200px;
+        }
+
+        input::placeholder {
+            color: #888;
+        }
+
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        button:hover {
+            background: #5a67d8;
+        }
+
+        .result {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 6px;
+            padding: 15px;
+            margin-top: 15px;
+            font-family: monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+            overflow-x: auto;
+        }
+
+        .companies-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .company-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .company-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .url-examples {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 6px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+
+        .url-examples h3 {
+            color: #60a5fa;
+            margin-bottom: 10px;
+        }
+
+        .url-examples a {
+            color: #93c5fd;
+            text-decoration: none;
+            display: block;
+            margin: 5px 0;
+        }
+
+        .url-examples a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Member Directory - Test & Debug</h1>
+
+        <div class="section">
+            <h2>1. Available Companies</h2>
+            <button onclick="loadCompanies()">Load All Companies</button>
+            <div id="companiesResult" class="result" style="display: none;"></div>
+            <div id="companiesList" class="companies-list"></div>
+        </div>
+
+        <div class="section">
+            <h2>2. Test Member Lookup</h2>
+            <div class="test-form">
+                <input 
+                    type="text" 
+                    id="companyInput" 
+                    placeholder="Enter company name (e.g., jaredstivala)"
+                    value="jaredstivala"
+                >
+                <button onclick="testMemberLookup()">Test Lookup</button>
+            </div>
+            <div id="membersResult" class="result" style="display: none;"></div>
+        </div>
+
+        <div class="section">
+            <h2>3. URL Detection Test</h2>
+            <button onclick="testUrlDetection()">Test Current URL</button>
+            <div id="urlResult" class="result" style="display: none;"></div>
+            
+            <div class="url-examples">
+                <h3>Test URLs:</h3>
+                <a href="/directory/jaredstivala" target="_blank">/directory/jaredstivala</a>
+                <a href="/directory/jaredsuniverse" target="_blank">/directory/jaredsuniverse</a>
+                <a href="/?company=jaredstivala" target="_blank">/?company=jaredstivala</a>
+                <a href="/directory.html?company=jaredstivala" target="_blank">/directory.html?company=jaredstivala</a>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>4. API Health Check</h2>
+            <button onclick="testHealthCheck()">Check API Health</button>
+            <div id="healthResult" class="result" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        async function loadCompanies() {
+            try {
+                const response = await fetch('/api/companies');
+                const data = await response.json();
+                
+                document.getElementById('companiesResult').style.display = 'block';
+                document.getElementById('companiesResult').textContent = JSON.stringify(data, null, 2);
+                
+                if (data.success && data.companies) {
+                    const companiesList = document.getElementById('companiesList');
+                    companiesList.innerHTML = data.companies.map(company => 
+                        `<div class="company-item" onclick="testCompany('${company.company_name}')">
+                            <strong>${company.company_name}</strong><br>
+                            <small>${company.company_id}</small>
+                        </div>`
+                    ).join('');
+                }
+            } catch (error) {
+                document.getElementById('companiesResult').style.display = 'block';
+                document.getElementById('companiesResult').textContent = `Error: ${error.message}`;
+            }
+        }
+
+        async function testMemberLookup() {
+            const companyName = document.getElementById('companyInput').value.trim();
+            if (!companyName) {
+                alert('Please enter a company name');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/members/${encodeURIComponent(companyName)}`);
+                const data = await response.json();
+                
+                document.getElementById('membersResult').style.display = 'block';
+                document.getElementById('membersResult').textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                document.getElementById('membersResult').style.display = 'block';
+                document.getElementById('membersResult').textContent = `Error: ${error.message}`;
+            }
+        }
+
+        function testCompany(companyName) {
+            document.getElementById('companyInput').value = companyName;
+            testMemberLookup();
+        }
+
+        function testUrlDetection() {
+            const info = {
+                currentUrl: window.location.href,
+                pathname: window.location.pathname,
+                search: window.location.search,
+                hash: window.location.hash,
+                referrer: document.referrer,
+                
+                // Test URL parsing
+                pathMatch: window.location.pathname.match(/\/directory\/([^\/]+)/),
+                queryCompany: new URLSearchParams(window.location.search).get('company'),
+                whopMatch: window.location.href.match(/whop\.com\/([^\/\?#]+)/),
+                referrerWhopMatch: document.referrer ? document.referrer.match(/whop\.com\/([^\/\?#]+)/) : null
+            };
+
+            document.getElementById('urlResult').style.display = 'block';
+            document.getElementById('urlResult').textContent = JSON.stringify(info, null, 2);
+        }
+
+        async function testHealthCheck() {
+            try {
+                const response = await fetch('/health');
+                const data = await response.json();
+                
+                document.getElementById('healthResult').style.display = 'block';
+                document.getElementById('healthResult').textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                document.getElementById('healthResult').style.display = 'block';
+                document.getElementById('healthResult').textContent = `Error: ${error.message}`;
+            }
+        }
+
+        // Auto-load companies on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadCompanies();
+            testUrlDetection();
+        });
+    </script>
+</body>
+</html>

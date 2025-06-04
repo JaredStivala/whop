@@ -335,14 +335,10 @@
                 this.companyId = this.getCompanyIdFromUrl();
                 this.apiBaseUrl = this.getApiBaseUrl();
                 
-                if (!this.companyId) {
-                    this.showCompanySelector();
-                    return;
-                }
-                
                 this.init();
             }
 
+            // UPDATED: Get company ID from URL with name resolution support
             getCompanyIdFromUrl() {
                 // 1. Check URL path for /directory/:companyId
                 const pathMatch = window.location.pathname.match(/\/directory\/([^\/]+)/);
@@ -363,6 +359,21 @@
                     return hashMatch[1];
                 }
                 
+                // 4. NEW: Extract company name from whop.com/companyname pattern
+                const currentUrl = window.location.href;
+                const whopContextMatch = currentUrl.match(/whop\.com\/([^\/\?#]+)/);
+                if (whopContextMatch) {
+                    const companyName = whopContextMatch[1];
+                    console.log(`🔍 Found company name in URL: ${companyName}`);
+                    
+                    // Skip common non-company paths
+                    const skipPaths = ['app', 'apps', 'api', 'auth', 'login', 'signup', 'dashboard', 'admin', 'www'];
+                    if (!skipPaths.includes(companyName.toLowerCase())) {
+                        // Return company name with prefix to indicate it needs resolution
+                        return `name:${companyName}`;
+                    }
+                }
+                
                 return null;
             }
 
@@ -370,6 +381,29 @@
                 // Auto-detect API base URL based on current domain
                 const currentDomain = window.location.origin;
                 return currentDomain.includes('localhost') ? 'http://localhost:3000' : currentDomain;
+            }
+
+            // NEW: Helper function to resolve company name to ID via API
+            async resolveCompanyName(companyName) {
+                try {
+                    console.log(`🔍 Resolving company name "${companyName}" via API`);
+                    
+                    const response = await fetch(`${this.apiBaseUrl}/api/resolve-company/${encodeURIComponent(companyName)}`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.success && data.company_id) {
+                            console.log(`✅ API resolved: ${companyName} -> ${data.company_id}`);
+                            return data.company_id;
+                        }
+                    }
+                    
+                    console.log(`❌ Could not resolve company name: ${companyName}`);
+                    return null;
+                    
+                } catch (error) {
+                    console.warn('Error resolving company name via API:', error);
+                    return null;
+                }
             }
 
             showCompanySelector() {
@@ -398,7 +432,28 @@
                 window.location.href = `${window.location.origin}/directory/${companyId}`;
             }
 
+            // UPDATED: Init method with company name resolution
             async init() {
+                // Handle company name resolution
+                if (this.companyId && this.companyId.startsWith('name:')) {
+                    const companyName = this.companyId.substring(5); // Remove 'name:' prefix
+                    console.log(`🔍 Need to resolve company name: ${companyName}`);
+                    
+                    const resolvedId = await this.resolveCompanyName(companyName);
+                    if (resolvedId) {
+                        this.companyId = resolvedId;
+                        console.log(`✅ Resolved to company ID: ${resolvedId}`);
+                    } else {
+                        this.showCompanySelector();
+                        return;
+                    }
+                }
+                
+                if (!this.companyId) {
+                    this.showCompanySelector();
+                    return;
+                }
+                
                 document.getElementById('companyInfo').textContent = `Company: ${this.companyId}`;
                 await this.loadGroupConfig();
                 await this.loadMembers();
@@ -414,7 +469,7 @@
                             document.getElementById('groupName').textContent = 
                                 `Member Directory`;
                             document.getElementById('companyInfo').textContent = 
-                                `Company: ${this.companyId} • ${data.company.member_count} members`;
+                                `Company: ${this.companyId} • ${data.company.stats.total_members} members`;
                         }
                     }
                 } catch (error) {

@@ -63,7 +63,7 @@
     <div id="app"></div>
 
     <script>
-        // Member Directory Application - Auto-Detect Company ID
+        // Member Directory Application - Company Name Detection
         class MemberDirectory {
             constructor() {
                 this.members = [];
@@ -145,7 +145,7 @@
                 return null;
             }
 
-            // Detect company ID when running inside Whop
+            // UPDATED: Detect company ID when running inside Whop with name resolution
             async detectWhopCompanyId() {
                 try {
                     // Method 1: Try to get from window.location when inside Whop iframe
@@ -154,16 +154,20 @@
                             const parentUrl = document.referrer || window.parent.location.href;
                             console.log('🔍 Checking parent URL:', parentUrl);
                             
-                            // Extract company ID from Whop URLs like whop.com/companyname/app-name/...
-                            const whopUrlMatch = parentUrl.match(/whop\.com\/([^\/]+)\/[^\/]+/);
+                            // Extract company name from Whop URLs like whop.com/companyname/...
+                            const whopUrlMatch = parentUrl.match(/whop\.com\/([^\/\?#]+)/);
                             if (whopUrlMatch) {
-                                const potentialCompanyId = whopUrlMatch[1];
-                                console.log(`🔍 Potential company from URL: ${potentialCompanyId}`);
+                                const companyName = whopUrlMatch[1];
+                                console.log(`🔍 Extracted company name from URL: ${companyName}`);
                                 
-                                // Try to convert company name/route to company ID
-                                const companyId = await this.resolveCompanyId(potentialCompanyId);
-                                if (companyId) {
-                                    return companyId;
+                                // Skip common non-company paths
+                                const skipPaths = ['app', 'apps', 'api', 'auth', 'login', 'signup', 'dashboard', 'admin', 'www'];
+                                if (!skipPaths.includes(companyName.toLowerCase())) {
+                                    // Try to resolve company name to company ID via API
+                                    const companyId = await this.resolveCompanyNameToId(companyName);
+                                    if (companyId) {
+                                        return companyId;
+                                    }
                                 }
                             }
                         } catch (error) {
@@ -171,33 +175,35 @@
                         }
                     }
                     
-                    // Method 2: Check if Whop SDK is available
+                    // Method 2: Check current page URL for whop.com/companyname pattern
+                    const currentUrl = window.location.href;
+                    console.log('🔍 Checking current URL for company context:', currentUrl);
+                    
+                    const whopContextMatch = currentUrl.match(/whop\.com\/([^\/\?#]+)/);
+                    if (whopContextMatch) {
+                        const companyName = whopContextMatch[1];
+                        console.log(`🔍 Found company name in current URL: ${companyName}`);
+                        
+                        // Skip common non-company paths
+                        const skipPaths = ['app', 'apps', 'api', 'auth', 'login', 'signup', 'dashboard', 'admin', 'www'];
+                        if (!skipPaths.includes(companyName.toLowerCase())) {
+                            const companyId = await this.resolveCompanyNameToId(companyName);
+                            if (companyId) {
+                                return companyId;
+                            }
+                        }
+                    }
+                    
+                    // Method 3: Check if Whop SDK is available (fallback)
                     if (window.whop || window.WhopSDK) {
                         console.log('🔍 Whop SDK detected, trying to get company info...');
                         try {
-                            // This would work if Whop SDK was loaded
                             const companyInfo = await window.whop?.getCompany?.();
                             if (companyInfo?.id) {
                                 return companyInfo.id;
                             }
                         } catch (error) {
                             console.warn('Error getting company from Whop SDK:', error);
-                        }
-                    }
-                    
-                    // Method 3: Try to extract from current page URL
-                    const currentUrl = window.location.href;
-                    console.log('🔍 Checking current URL for company context:', currentUrl);
-                    
-                    // Check if we're inside a Whop domain context
-                    const whopContextMatch = currentUrl.match(/whop\.com\/([^\/]+)/);
-                    if (whopContextMatch) {
-                        const companyRoute = whopContextMatch[1];
-                        console.log(`🔍 Found company route in current URL: ${companyRoute}`);
-                        
-                        const companyId = await this.resolveCompanyId(companyRoute);
-                        if (companyId) {
-                            return companyId;
                         }
                     }
                     
@@ -222,6 +228,46 @@
                 return null;
             }
 
+            // NEW: Helper function to resolve company name to ID via API
+            async resolveCompanyNameToId(companyName) {
+                try {
+                    console.log(`🔍 Resolving company name "${companyName}" via API`);
+                    
+                    // Call our API to resolve the company name
+                    const response = await fetch(`/api/resolve-company/${encodeURIComponent(companyName)}`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.success && data.company_id) {
+                            console.log(`✅ API resolved: ${companyName} -> ${data.company_id}`);
+                            return data.company_id;
+                        }
+                    }
+                    
+                    // Fallback: try to find the company in the companies list
+                    const companiesResponse = await fetch('/api/companies');
+                    if (companiesResponse.ok) {
+                        const companiesData = await companiesResponse.json();
+                        if (companiesData.success && companiesData.companies) {
+                            // Look for a company with matching route or name
+                            const company = companiesData.companies.find(c => 
+                                c.route === companyName || 
+                                c.name?.toLowerCase() === companyName.toLowerCase() ||
+                                c.title?.toLowerCase() === companyName.toLowerCase()
+                            );
+                            if (company) {
+                                console.log(`✅ Found company match: ${company.name} -> ${company.id}`);
+                                return company.id;
+                            }
+                        }
+                    }
+                    
+                } catch (error) {
+                    console.warn('Error resolving company name via API:', error);
+                }
+                
+                return null;
+            }
+
             // Try to resolve a company name/route to a company ID
             async resolveCompanyId(companyNameOrRoute) {
                 try {
@@ -230,35 +276,41 @@
                         return companyNameOrRoute;
                     }
                     
-                    // Try to find the company by checking our companies API
-                    const response = await fetch('/api/companies');
+                    // Try to resolve via our new API endpoint
+                    const response = await fetch(`/api/resolve-company/${encodeURIComponent(companyNameOrRoute)}`);
                     if (response.ok) {
                         const data = await response.json();
-                        if (data.success && data.companies) {
+                        if (data.success && data.company_id) {
+                            console.log(`✅ API resolved: ${companyNameOrRoute} -> ${data.company_id}`);
+                            return data.company_id;
+                        }
+                    }
+                    
+                    // Fallback: try to find the company by checking our companies API
+                    const companiesResponse = await fetch('/api/companies');
+                    if (companiesResponse.ok) {
+                        const companiesData = await companiesResponse.json();
+                        if (companiesData.success && companiesData.companies) {
                             // Look for a company with matching route or name
-                            const company = data.companies.find(c => 
+                            const company = companiesData.companies.find(c => 
                                 c.route === companyNameOrRoute || 
-                                c.name?.toLowerCase() === companyNameOrRoute.toLowerCase()
+                                c.name?.toLowerCase() === companyNameOrRoute.toLowerCase() ||
+                                c.title?.toLowerCase() === companyNameOrRoute.toLowerCase()
                             );
                             if (company) {
+                                console.log(`✅ Found company match: ${company.name} -> ${company.id}`);
                                 return company.id;
                             }
                         }
                     }
                     
-                    // If we can't resolve it, assume it might be a company ID format
-                    // and try to create one (this will be handled by the webhook when members join)
-                    if (companyNameOrRoute && companyNameOrRoute.length > 3) {
-                        // For now, return null and let the user enter manually
-                        // In the future, you could try to create a company with this route
-                        return null;
-                    }
+                    console.log(`❌ Could not resolve: ${companyNameOrRoute}`);
+                    return null;
                     
                 } catch (error) {
-                    console.warn('Error resolving company ID:', error);
+                    console.warn('Error resolving company:', error);
+                    return null;
                 }
-                
-                return null;
             }
 
             showCompanyIdError() {

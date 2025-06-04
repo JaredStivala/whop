@@ -1,4 +1,4 @@
-// ==================== COMPLETE FIXED SERVER.JS - MULTI-COMPANY SUPPORT ====================
+// ==================== COMPLETE UPDATED SERVER.JS - COMPANY NAME DETECTION ====================
 
 const express = require('express');
 const { Pool } = require('pg');
@@ -60,16 +60,65 @@ pool.connect()
 
 // ==================== HELPER FUNCTIONS ====================
 
-// FIXED: Helper function to extract company ID from webhook data
+// NEW: Helper function to resolve company name to company ID
+async function resolveCompanyNameToId(companyName) {
+  try {
+    console.log(`🔍 Resolving company name "${companyName}" to company_id`);
+    
+    // Query database to find company by name/route
+    const result = await pool.query(`
+      SELECT company_id, name, title, route 
+      FROM whop_companies 
+      WHERE 
+        LOWER(name) = LOWER($1) OR 
+        LOWER(title) = LOWER($1) OR 
+        LOWER(route) = LOWER($1) OR
+        company_id = $1
+      LIMIT 1
+    `, [companyName]);
+    
+    if (result.rows.length > 0) {
+      const company = result.rows[0];
+      console.log(`✅ Found company: ${company.name} -> ${company.company_id}`);
+      return company.company_id;
+    }
+    
+    // If no exact match, try partial matching
+    const partialResult = await pool.query(`
+      SELECT company_id, name, title, route 
+      FROM whop_companies 
+      WHERE 
+        LOWER(name) LIKE LOWER($1) OR 
+        LOWER(title) LIKE LOWER($1) OR 
+        LOWER(route) LIKE LOWER($1)
+      LIMIT 1
+    `, [`%${companyName}%`]);
+    
+    if (partialResult.rows.length > 0) {
+      const company = partialResult.rows[0];
+      console.log(`✅ Found partial match: ${company.name} -> ${company.company_id}`);
+      return company.company_id;
+    }
+    
+    console.log(`❌ No company found for name: ${companyName}`);
+    return null;
+    
+  } catch (error) {
+    console.error('❌ Error resolving company name to ID:', error);
+    return null;
+  }
+}
+
+// UPDATED: Helper function to extract company ID from webhook data
 function extractCompanyId(data) {
   console.log('🔍 Extracting company ID from webhook data...');
   console.log('📋 Available fields:', Object.keys(data));
   
-  // Check all possible company ID fields based on your actual webhook logs
+  // Check all possible company ID fields
   const companyId = 
-    data.company_buyer_id ||          // ✅ This was in your webhook logs!
+    data.company_buyer_id ||          // Most common from your logs
     data.page_id ||                   // Sometimes contains company info  
-    data.company_id ||                // Direct field (rare)
+    data.company_id ||                // Direct field
     data.business_id ||               // Alternative name
     data.hub_id ||                    // Legacy field
     data.companyId ||                 // Camel case
@@ -86,25 +135,63 @@ function extractCompanyId(data) {
   
   // Try to extract from URLs if present
   if (data.manage_url) {
-    const match = data.manage_url.match(/\/(biz_[a-zA-Z0-9]+)/);
-    if (match) {
-      console.log(`✅ Extracted company ID from URL: ${match[1]}`);
-      return match[1];
+    // NEW: Look for company name pattern in URL: whop.com/companyname/...
+    const nameMatch = data.manage_url.match(/whop\.com\/([^\/\?#]+)/);
+    if (nameMatch) {
+      const companyName = nameMatch[1];
+      console.log(`🔍 Extracted company name from URL: ${companyName}`);
+      
+      // Skip common non-company paths
+      const skipPaths = ['app', 'apps', 'api', 'auth', 'login', 'signup', 'dashboard', 'admin'];
+      if (!skipPaths.includes(companyName.toLowerCase())) {
+        // Store for async resolution (will be handled by ensureCompanyExists)
+        return `name:${companyName}`;
+      }
+    }
+    
+    // Fallback: look for company ID pattern in URL
+    const idMatch = data.manage_url.match(/\/(biz_[a-zA-Z0-9]+)/);
+    if (idMatch) {
+      console.log(`✅ Extracted company ID from URL: ${idMatch[1]}`);
+      return idMatch[1];
     }
   }
   
   console.log('❌ No company ID found');
-  console.log('📋 Debug values:', {
-    company_buyer_id: data.company_buyer_id,
-    page_id: data.page_id,
-    company_id: data.company_id
-  });
   return null;
 }
 
-// Function to ensure company exists in whop_companies table
-async function ensureCompanyExists(companyId) {
+// UPDATED: Function to ensure company exists in whop_companies table
+async function ensureCompanyExists(companyIdOrName) {
   try {
+    let companyId = companyIdOrName;
+    
+    // NEW: Check if it's a company name that needs resolution
+    if (companyIdOrName.startsWith('name:')) {
+      const companyName = companyIdOrName.substring(5); // Remove 'name:' prefix
+      console.log(`🔍 Resolving company name: ${companyName}`);
+      
+      companyId = await resolveCompanyNameToId(companyName);
+      
+      if (!companyId) {
+        // Create a new company with this name
+        console.log(`➕ Creating new company with name: ${companyName}`);
+        
+        // Generate a company ID (you might want to use a different pattern)
+        companyId = `biz_${companyName.toLowerCase().replace(/[^a-z0-9]/g, '')}${Date.now().toString(36)}`;
+        
+        const result = await pool.query(`
+          INSERT INTO whop_companies (
+            company_id, name, title, route, created_at, updated_at
+          ) VALUES ($1, $2, $3, $4, NOW(), NOW())
+          RETURNING *
+        `, [companyId, companyName, companyName, companyName]);
+        
+        console.log(`🎉 Created new company: ${companyName} -> ${companyId}`);
+        return result.rows[0];
+      }
+    }
+    
     // Check if company already exists
     const existingCompany = await pool.query(
       'SELECT id, name FROM whop_companies WHERE company_id = $1',
@@ -195,6 +282,54 @@ app.get('/api/test', (req, res) => {
     timestamp: new Date().toISOString(),
     server: 'Whop Member Directory API'
   });
+});
+
+// NEW: Resolve company name to company ID
+app.get('/api/resolve-company/:companyName', async (req, res) => {
+  const { companyName } = req.params;
+  
+  try {
+    console.log(`🔍 API: Resolving company name: ${companyName}`);
+    
+    const companyId = await resolveCompanyNameToId(companyName);
+    
+    if (companyId) {
+      // Get full company details
+      const result = await pool.query(
+        'SELECT * FROM whop_companies WHERE company_id = $1',
+        [companyId]
+      );
+      
+      if (result.rows.length > 0) {
+        const company = result.rows[0];
+        return res.json({
+          success: true,
+          company_id: companyId,
+          company: {
+            id: company.company_id,
+            name: company.name,
+            title: company.title,
+            route: company.route,
+            image_url: company.image_url,
+            hostname: company.hostname
+          }
+        });
+      }
+    }
+    
+    res.status(404).json({
+      success: false,
+      error: `No company found for name: ${companyName}`,
+      company_name: companyName
+    });
+    
+  } catch (error) {
+    console.error('❌ Error in resolve-company endpoint:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
 });
 
 // Get company information
@@ -550,7 +685,7 @@ app.post('/webhook/whop', async (req, res) => {
       return res.status(400).json({ error: 'No data provided' });
     }
 
-    // Extract company ID using the FIXED function
+    // Extract company ID using the UPDATED function
     const companyId = extractCompanyId(data);
     
     if (!companyId) {
@@ -570,7 +705,7 @@ app.post('/webhook/whop', async (req, res) => {
       });
     }
 
-    // ✅ Ensure company exists BEFORE trying to add members
+    // ✅ Ensure company exists BEFORE trying to add members (handles name resolution)
     await ensureCompanyExists(companyId);
 
     const userId = data.user_id || data.user;
@@ -712,6 +847,7 @@ app.use('/api/*', (req, res) => {
       'GET /api/health',
       'GET /api/companies',
       'GET /api/company/:companyId',
+      'GET /api/resolve-company/:companyName',
       'GET /api/members/:companyId',
       'GET /api/directory/:companyId',
       'GET /api/debug/:companyId',
@@ -739,6 +875,7 @@ app.listen(port, () => {
   console.log('   GET  /api/health                   - Health check');
   console.log('   GET  /api/companies                - Get all companies');
   console.log('   GET  /api/company/:companyId       - Get company info');
+  console.log('   GET  /api/resolve-company/:name    - Resolve company name to ID');
   console.log('   GET  /api/members/:companyId       - Get members');
   console.log('   GET  /api/directory/:companyId     - Directory data');
   console.log('   GET  /api/debug/:companyId         - Debug endpoint');

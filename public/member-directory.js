@@ -1,4 +1,4 @@
-// Member Directory Application - Multi-company Support
+// Member Directory Application - Company Name Detection Support
 class MemberDirectory {
     constructor() {
         this.members = [];
@@ -17,7 +17,7 @@ class MemberDirectory {
         this.init();
     }
 
-    // Get company ID from multiple sources
+    // UPDATED: Get company ID from multiple sources including name resolution
     getCompanyId() {
         // 1. Check URL path for /directory/:companyId
         const pathMatch = window.location.pathname.match(/\/directory\/([^\/]+)/);
@@ -38,13 +38,28 @@ class MemberDirectory {
             return hashMatch[1];
         }
         
-        // 4. Check if stored in localStorage (for persistence)
+        // 4. NEW: Extract company name from whop.com/companyname pattern
+        const currentUrl = window.location.href;
+        const whopContextMatch = currentUrl.match(/whop\.com\/([^\/\?#]+)/);
+        if (whopContextMatch) {
+            const companyName = whopContextMatch[1];
+            console.log(`🔍 Found company name in URL: ${companyName}`);
+            
+            // Skip common non-company paths
+            const skipPaths = ['app', 'apps', 'api', 'auth', 'login', 'signup', 'dashboard', 'admin', 'www'];
+            if (!skipPaths.includes(companyName.toLowerCase())) {
+                // Return company name with prefix to indicate it needs resolution
+                return `name:${companyName}`;
+            }
+        }
+        
+        // 5. Check if stored in localStorage (for persistence)
         const storedCompanyId = localStorage.getItem('whop_company_id');
         if (storedCompanyId) {
             return storedCompanyId;
         }
         
-        // 5. Try to extract from current domain (if using subdomains)
+        // 6. Try to extract from current domain (if using subdomains)
         const subdomain = window.location.hostname.split('.')[0];
         if (subdomain && subdomain !== 'www' && subdomain.startsWith('biz_')) {
             return subdomain;
@@ -111,9 +126,26 @@ class MemberDirectory {
         window.location.href = `/directory/${companyId}`;
     }
 
+    // UPDATED: Init method with company name resolution
     async init() {
         try {
             console.log(`🚀 Initializing Member Directory for company: ${this.companyId}`);
+            
+            // NEW: Handle company name resolution
+            if (this.companyId && this.companyId.startsWith('name:')) {
+                const companyName = this.companyId.substring(5); // Remove 'name:' prefix
+                console.log(`🔍 Need to resolve company name: ${companyName}`);
+                
+                const resolvedId = await this.resolveCompanyId(companyName);
+                if (resolvedId) {
+                    this.companyId = resolvedId;
+                    console.log(`✅ Resolved to company ID: ${resolvedId}`);
+                } else {
+                    this.showCompanyIdError();
+                    return;
+                }
+            }
+            
             this.createModernUI();
             await this.loadMembers();
             this.setupEventListeners();
@@ -340,6 +372,53 @@ class MemberDirectory {
             this.showError(`Error loading members: ${error.message}`);
         } finally {
             this.setLoading(false);
+        }
+    }
+
+    // UPDATED: Try to resolve a company name/route to a company ID with API support
+    async resolveCompanyId(companyNameOrRoute) {
+        try {
+            console.log(`🔍 Resolving company: ${companyNameOrRoute}`);
+            
+            // If it already looks like a company ID, return it
+            if (companyNameOrRoute.startsWith('biz_')) {
+                return companyNameOrRoute;
+            }
+            
+            // Try to resolve via our new API endpoint
+            const response = await fetch(`/api/resolve-company/${encodeURIComponent(companyNameOrRoute)}`);
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success && data.company_id) {
+                    console.log(`✅ API resolved: ${companyNameOrRoute} -> ${data.company_id}`);
+                    return data.company_id;
+                }
+            }
+            
+            // Fallback: try to find the company by checking our companies API
+            const companiesResponse = await fetch('/api/companies');
+            if (companiesResponse.ok) {
+                const companiesData = await companiesResponse.json();
+                if (companiesData.success && companiesData.companies) {
+                    // Look for a company with matching route or name
+                    const company = companiesData.companies.find(c => 
+                        c.route === companyNameOrRoute || 
+                        c.name?.toLowerCase() === companyNameOrRoute.toLowerCase() ||
+                        c.title?.toLowerCase() === companyNameOrRoute.toLowerCase()
+                    );
+                    if (company) {
+                        console.log(`✅ Found company match: ${company.name} -> ${company.id}`);
+                        return company.id;
+                    }
+                }
+            }
+            
+            console.log(`❌ Could not resolve: ${companyNameOrRoute}`);
+            return null;
+            
+        } catch (error) {
+            console.warn('Error resolving company:', error);
+            return null;
         }
     }
 

@@ -1,10 +1,11 @@
-// Updated server.js with proper authentication approach
 const express = require('express');
 const { Pool } = require('pg');
 const path = require('path');
 
 const app = express();
 const port = process.env.PORT || 3000;
+
+console.log('🚀 Starting Whop Member Directory Server...');
 
 // Middleware
 app.use(express.json({ limit: '10mb' }));
@@ -28,163 +29,118 @@ const pool = new Pool({
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
-// ==================== AUTHENTICATION MIDDLEWARE ====================
+// Test database connection
+pool.connect()
+  .then(client => {
+    console.log('✅ Database connected successfully');
+    client.release();
+  })
+  .catch(err => {
+    console.error('❌ Database connection error:', err);
+  });
 
-// Mock authentication - replace with real Whop auth
-async function verifyWhopAuth(req) {
-  // In a real app, this would:
-  // 1. Verify JWT token from Whop
-  // 2. Get user info from Whop API
-  // 3. Return user details
-  
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return { authorized: false, error: 'No valid auth token provided' };
-  }
-  
-  // Mock user - replace with real Whop user data
-  return {
-    authorized: true,
-    userId: 'user_123',
-    username: 'testuser',
-    email: 'test@example.com'
-  };
-}
+// ==================== SIMPLIFIED API ROUTES ====================
 
-async function verifyCompanyAccess(req, companyId) {
-  // Verify user authentication
-  const auth = await verifyWhopAuth(req);
-  if (!auth.authorized) {
-    return auth;
-  }
-  
-  // In a real app, this would:
-  // 1. Check if user is a member/admin of this company
-  // 2. Query Whop API for user's company memberships
-  // 3. Verify access level
-  
-  try {
-    // Check if company exists in our database
-    const companyResult = await pool.query(
-      'SELECT company_id, company_name FROM whop_companies WHERE company_id = $1',
-      [companyId]
-    );
-    
-    if (companyResult.rows.length === 0) {
-      return { 
-        authorized: false, 
-        error: 'Company not found',
-        userMessage: 'The requested company does not exist.' 
-      };
-    }
-    
-    // Mock access check - replace with real permission verification
-    return {
-      authorized: true,
-      userId: auth.userId,
-      username: auth.username,
-      email: auth.email,
-      company: companyResult.rows[0],
-      accessLevel: 'admin' // or 'member', 'viewer', etc.
-    };
-    
-  } catch (error) {
-    console.error('Error verifying company access:', error);
-    return {
-      authorized: false,
-      error: 'Database error during authorization',
-      userMessage: 'Unable to verify access permissions.'
-    };
-  }
-}
-
-// ==================== SECURE API ROUTES ====================
-
-// Get user's accessible companies
-app.get('/api/user/companies', async (req, res) => {
-  try {
-    const auth = await verifyWhopAuth(req);
-    if (!auth.authorized) {
-      return res.status(401).json({
-        error: auth.userMessage || auth.error,
-        code: 'UNAUTHORIZED'
-      });
-    }
-    
-    // In a real app, get companies from Whop API based on user's memberships
-    // For now, return all companies (with member counts)
-    const companiesResult = await pool.query(`
-      SELECT 
-        c.company_id,
-        c.company_name,
-        c.created_at,
-        COUNT(m.id) as member_count
-      FROM whop_companies c
-      LEFT JOIN whop_members m ON c.company_id = m.company_id
-      GROUP BY c.company_id, c.company_name, c.created_at
-      ORDER BY c.company_name
-    `);
-    
-    res.json({
-      success: true,
-      user: {
-        id: auth.userId,
-        username: auth.username,
-        email: auth.email
-      },
-      companies: companiesResult.rows,
-      timestamp: new Date().toISOString()
-    });
-    
-  } catch (error) {
-    console.error('Error fetching user companies:', error);
-    res.status(500).json({
-      error: 'Failed to fetch companies',
-      code: 'INTERNAL_ERROR'
-    });
-  }
+// Health check
+app.get('/health', (req, res) => {
+  res.json({ 
+    success: true, 
+    message: 'Server is healthy!', 
+    timestamp: new Date().toISOString()
+  });
 });
 
-// Get members for a specific company (with authentication)
-app.get('/api/companies/:companyId/members', async (req, res) => {
+// Get members by company name - SIMPLIFIED
+app.get('/api/members/:companyName', async (req, res) => {
+  const { companyName } = req.params;
+  
+  // Set content type to JSON explicitly
+  res.setHeader('Content-Type', 'application/json');
+  
   try {
-    const { companyId } = req.params;
+    console.log(`🔍 Looking up company: "${companyName}"`);
     
-    // Verify authentication and authorization
-    const auth = await verifyCompanyAccess(req, companyId);
-    if (!auth.authorized) {
-      return res.status(401).json({
-        error: auth.userMessage || auth.error,
-        details: auth.error,
-        code: 'UNAUTHORIZED'
+    // Test database connection first
+    try {
+      await pool.query('SELECT 1');
+      console.log('✅ Database connection verified');
+    } catch (dbError) {
+      console.error('❌ Database connection failed:', dbError);
+      return res.status(500).json({
+        success: false,
+        error: 'Database connection failed',
+        details: dbError.message
       });
     }
     
-    console.log(`✅ User ${auth.userId} accessing members for company ${companyId}`);
+    // Step 1: Find company_id from company_name (case insensitive)
+    const companyQuery = `
+      SELECT company_id, company_name 
+      FROM whop_companies 
+      WHERE LOWER(company_name) = LOWER($1)
+    `;
     
-    // Get members for this company
-    const membersResult = await pool.query(`
-      SELECT 
-        id, user_id, membership_id, email, name, username,
-        custom_fields, joined_at, status, created_at, updated_at
-      FROM whop_members 
+    console.log(`📋 Executing query: ${companyQuery} with param: ${companyName}`);
+    const companyResult = await pool.query(companyQuery, [companyName]);
+    console.log(`📋 Company query result: ${companyResult.rows.length} rows`);
+
+    if (companyResult.rows.length === 0) {
+      console.log(`❌ Company "${companyName}" not found`);
+      
+      // Show available companies for debugging
+      try {
+        const allCompanies = await pool.query('SELECT company_name FROM whop_companies LIMIT 10');
+        console.log('📋 Available companies:', allCompanies.rows.map(row => row.company_name));
+        
+        return res.status(404).json({
+          success: false,
+          error: `Company "${companyName}" not found`,
+          available_companies: allCompanies.rows.map(row => row.company_name),
+          searched_for: companyName
+        });
+      } catch (listError) {
+        console.error('❌ Error listing companies:', listError);
+        return res.status(404).json({
+          success: false,
+          error: `Company "${companyName}" not found`,
+          searched_for: companyName,
+          note: 'Could not list available companies due to database error'
+        });
+      }
+    }
+
+    const company = companyResult.rows[0];
+    const companyId = company.company_id;
+    
+    console.log(`✅ Found company: ${companyName} -> ${companyId}`);
+
+    // Step 2: Get all members for this company_id
+    const membersQuery = `
+      SELECT * FROM whop_members 
       WHERE company_id = $1
       ORDER BY joined_at DESC NULLS LAST
-    `, [companyId]);
+    `;
     
+    console.log(`📋 Executing members query for company_id: ${companyId}`);
+    const membersResult = await pool.query(membersQuery, [companyId]);
+    console.log(`✅ Found ${membersResult.rows.length} members for ${companyName}`);
+
     // Format members data
     const members = membersResult.rows.map(member => {
       let customFields = {};
       if (member.custom_fields) {
         try {
-          customFields = typeof member.custom_fields === 'string' 
-            ? JSON.parse(member.custom_fields) 
-            : member.custom_fields;
-        } catch (e) {
+          if (typeof member.custom_fields === 'string') {
+            customFields = JSON.parse(member.custom_fields);
+          } else {
+            customFields = member.custom_fields;
+          }
+        } catch (parseError) {
+          console.warn('❌ Error parsing custom_fields for member:', member.id);
           customFields = {};
         }
       }
-      
+
       return {
         id: member.id,
         user_id: member.user_id,
@@ -197,115 +153,255 @@ app.get('/api/companies/:companyId/members', async (req, res) => {
         status: member.status || 'active'
       };
     });
-    
-    res.json({
+
+    const response = {
       success: true,
-      company: auth.company,
+      company_name: companyName,
+      company_id: companyId,
       members: members,
       count: members.length,
-      requestedBy: auth.userId,
-      accessLevel: auth.accessLevel,
       timestamp: new Date().toISOString()
-    });
+    };
     
+    console.log(`✅ Sending response with ${members.length} members`);
+    res.json(response);
+
   } catch (error) {
-    console.error('Error fetching company members:', error);
+    console.error('❌ Error in members lookup:', error);
+    console.error('❌ Stack trace:', error.stack);
+    
     res.status(500).json({
-      error: 'Failed to fetch members',
-      code: 'INTERNAL_ERROR'
+      success: false,
+      error: error.message,
+      company_name: companyName,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 });
 
-// Get company info (with authentication)
-app.get('/api/companies/:companyId', async (req, res) => {
+// Debug endpoint to see all companies
+app.get('/api/companies', async (req, res) => {
   try {
-    const { companyId } = req.params;
-    
-    // Verify authentication and authorization
-    const auth = await verifyCompanyAccess(req, companyId);
-    if (!auth.authorized) {
-      return res.status(401).json({
-        error: auth.userMessage || auth.error,
-        details: auth.error,
-        code: 'UNAUTHORIZED'
-      });
-    }
-    
-    // Get company details with member stats
-    const companyResult = await pool.query(`
+    const result = await pool.query(`
       SELECT 
-        c.company_id,
+        c.company_id, 
         c.company_name,
-        c.created_at,
-        c.updated_at,
-        COUNT(m.id) as total_members,
-        COUNT(CASE WHEN m.status = 'active' THEN 1 END) as active_members,
-        COUNT(CASE WHEN m.joined_at > NOW() - INTERVAL '30 days' THEN 1 END) as new_members_30d
+        COUNT(m.id) as member_count
       FROM whop_companies c
       LEFT JOIN whop_members m ON c.company_id = m.company_id
-      WHERE c.company_id = $1
-      GROUP BY c.company_id, c.company_name, c.created_at, c.updated_at
-    `, [companyId]);
-    
-    if (companyResult.rows.length === 0) {
-      return res.status(404).json({
-        error: 'Company not found',
-        code: 'NOT_FOUND'
-      });
-    }
-    
+      GROUP BY c.company_id, c.company_name
+      ORDER BY c.company_name
+    `);
     res.json({
       success: true,
-      company: companyResult.rows[0],
-      requestedBy: auth.userId,
-      accessLevel: auth.accessLevel,
-      timestamp: new Date().toISOString()
+      companies: result.rows
     });
-    
   } catch (error) {
-    console.error('Error fetching company info:', error);
     res.status(500).json({
-      error: 'Failed to fetch company info',
-      code: 'INTERNAL_ERROR'
+      success: false,
+      error: error.message
     });
   }
 });
 
-// Health check
-app.get('/health', (req, res) => {
-  res.json({
-    success: true,
-    message: 'Server is healthy!',
-    timestamp: new Date().toISOString()
-  });
+// BACKWARD COMPATIBILITY: Old endpoint that your frontend is calling
+app.get('/api/directory/:companyName', async (req, res) => {
+  const { companyName } = req.params;
+  
+  try {
+    console.log(`🔍 [OLD API] Looking up company: "${companyName}"`);
+    
+    // Step 1: Find company_id from company_name (case insensitive)
+    const companyQuery = `
+      SELECT company_id, company_name 
+      FROM whop_companies 
+      WHERE LOWER(company_name) = LOWER($1)
+    `;
+    
+    const companyResult = await pool.query(companyQuery, [companyName]);
+
+    if (companyResult.rows.length === 0) {
+      console.log(`❌ Company "${companyName}" not found`);
+      
+      // Show available companies for debugging
+      const allCompanies = await pool.query('SELECT company_name, company_id FROM whop_companies LIMIT 10');
+      console.log('📋 Available companies:', allCompanies.rows);
+      
+      return res.status(404).json({
+        success: false,
+        error: `Company "${companyName}" not found`,
+        available_companies: allCompanies.rows,
+        searched_for: companyName
+      });
+    }
+
+    const company = companyResult.rows[0];
+    const companyId = company.company_id;
+    
+    console.log(`✅ Found company: ${companyName} -> ${companyId}`);
+
+    // Step 2: Get all members for this company_id
+    const membersQuery = `
+      SELECT * FROM whop_members 
+      WHERE company_id = $1
+      ORDER BY joined_at DESC NULLS LAST
+    `;
+    
+    const membersResult = await pool.query(membersQuery, [companyId]);
+    console.log(`✅ Found ${membersResult.rows.length} members for ${companyName}`);
+
+    // Format members data
+    const members = membersResult.rows.map(member => {
+      let customFields = {};
+      if (member.custom_fields) {
+        try {
+          if (typeof member.custom_fields === 'string') {
+            customFields = JSON.parse(member.custom_fields);
+          } else {
+            customFields = member.custom_fields;
+          }
+        } catch (parseError) {
+          console.warn('❌ Error parsing custom_fields for member:', member.id);
+          customFields = {};
+        }
+      }
+
+      return {
+        id: member.id,
+        user_id: member.user_id,
+        membership_id: member.membership_id,
+        email: member.email,
+        name: member.name,
+        username: member.username,
+        custom_fields: customFields,
+        joined_at: member.joined_at,
+        status: member.status || 'active'
+      };
+    });
+
+    res.json({
+      success: true,
+      company_name: companyName,
+      company_id: companyId,
+      members: members,
+      count: members.length,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('❌ Error in directory lookup:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      company_name: companyName
+    });
+  }
 });
 
-// ==================== WEBHOOK (unchanged) ====================
+// ==================== WHOP WEBHOOK (unchanged) ====================
 app.post('/webhook/whop', async (req, res) => {
-  // ... existing webhook code unchanged
+  try {
+    console.log('🎯 Webhook received from Whop');
+    const { data, event_type } = req.body;
+
+    if (!data) {
+      return res.status(400).json({ error: 'No data provided' });
+    }
+
+    const companyId = data.company_buyer_id || data.page_id || data.company_id;
+    const userId = data.user_id || data.user;
+    const membershipId = data.id || data.membership_id;
+
+    if (!companyId || !userId || !membershipId) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    // Handle member deactivation
+    if (event_type === 'membership.went_invalid' || event_type === 'membership_went_invalid') {
+      await pool.query(`
+        UPDATE whop_members 
+        SET status = 'inactive', updated_at = NOW() 
+        WHERE user_id = $1 AND company_id = $2
+      `, [userId, companyId]);
+      
+      console.log(`🔄 Member ${userId} deactivated for company ${companyId}`);
+      return res.json({ success: true, action: 'member_deactivated' });
+    }
+
+    // Add/update member
+    const insertQuery = `
+      INSERT INTO whop_members (
+        user_id, membership_id, company_id, email, name, username, 
+        custom_fields, joined_at, status, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
+      ON CONFLICT (user_id, company_id) 
+      DO UPDATE SET 
+        membership_id = EXCLUDED.membership_id,
+        email = EXCLUDED.email,
+        name = EXCLUDED.name,
+        username = EXCLUDED.username,
+        custom_fields = EXCLUDED.custom_fields,
+        status = EXCLUDED.status,
+        updated_at = NOW()
+      RETURNING *;
+    `;
+
+    const result = await pool.query(insertQuery, [
+      userId, 
+      membershipId, 
+      companyId, 
+      data.email || null,
+      data.name || null,
+      data.username || null,
+      JSON.stringify(data.custom_field_responses || {}),
+      new Date(),
+      'active'
+    ]);
+
+    console.log(`🎉 Member stored for company ${companyId}`);
+    res.json({ success: true, member: result.rows[0] });
+
+  } catch (error) {
+    console.error('❌ Webhook error:', error);
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // ==================== FRONTEND ROUTES ====================
-app.get('/companies/:companyId', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'secure-directory.html'));
+
+// Serve test/debug page
+app.get('/test.html', (req, res) => {
+  console.log('📄 Serving test.html');
+  res.sendFile(path.join(__dirname, 'public', 'test.html'));
 });
 
+// Serve directory page with company name from URL
+app.get('/directory/:companyName', (req, res) => {
+  console.log(`📄 Serving directory for company: ${req.params.companyName}`);
+  res.sendFile(path.join(__dirname, 'public', 'directory.html'));
+});
+
+// Serve main page
 app.get('/', (req, res) => {
+  console.log('📄 Serving index.html');
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Catch-all
+// Catch-all for other routes - MUST BE LAST
 app.get('*', (req, res) => {
+  console.log(`📄 Catch-all route for: ${req.path}`);
+  // Only serve HTML for non-API routes
   if (req.path.startsWith('/api/')) {
+    console.log(`❌ API route not found: ${req.path}`);
     res.status(404).json({
+      success: false,
       error: `API endpoint not found: ${req.path}`,
-      code: 'NOT_FOUND',
-      availableEndpoints: [
+      available_endpoints: [
         'GET /health',
-        'GET /api/user/companies',
-        'GET /api/companies/:companyId',
-        'GET /api/companies/:companyId/members',
+        'GET /api/health', 
+        'GET /api/companies',
+        'GET /api/directory/:companyName',  // <- Added this
+        'GET /api/members/:companyName',
         'POST /webhook/whop'
       ]
     });
@@ -314,13 +410,24 @@ app.get('*', (req, res) => {
   }
 });
 
+// ==================== START SERVER ====================
+
 app.listen(port, () => {
-  console.log(`🚀 Secure server running on port ${port}`);
-  console.log('🔐 Authentication-protected endpoints:');
-  console.log('   GET  /api/user/companies           - Get user\'s accessible companies');
-  console.log('   GET  /api/companies/:id            - Get company details'); 
-  console.log('   GET  /api/companies/:id/members    - Get company members');
-  console.log('   GET  /companies/:id                - Secure directory page');
+  console.log('');
+  console.log('🎉 ===== SERVER STARTED =====');
+  console.log(`🚀 Server running on port ${port}`);
+  console.log('');
+  console.log('📋 API Endpoints:');
+  console.log('   GET  /health                        - Health check');
+  console.log('   GET  /api/companies                 - List all companies');
+  console.log('   GET  /api/directory/:companyName    - Get members by company name (OLD)');
+  console.log('   GET  /api/members/:companyName      - Get members by company name');
+  console.log('   GET  /directory/:companyName        - Member directory page');
+  console.log('   POST /webhook/whop                  - Whop webhook');
+  console.log('');
+  console.log('🔧 Debug:');
+  console.log('   GET  /test.html                     - Debug/test page');
+  console.log('');
 });
 
 module.exports = app;

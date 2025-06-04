@@ -3,105 +3,292 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Member Directory - Whop Community</title>
-    <meta name="description" content="Connect with fellow community members">
-    <link rel="icon" type="image/x-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👥</text></svg>">
-    
+    <title>Member Directory</title>
     <style>
-        /* Loading screen styles */
-        #loadingScreen {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(180deg, #0a0a0a 0%, #111111 100%);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 9999;
-            color: white;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Inter', sans-serif;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
-        
-        .loading-spinner {
-            width: 40px;
-            height: 40px;
-            border: 3px solid rgba(255, 255, 255, 0.1);
-            border-radius: 50%;
-            border-top-color: #3b82f6;
-            animation: spin 1s ease-in-out infinite;
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0a;
+            color: #ffffff;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 40px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 16px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .company-info {
+            font-size: 1.1rem;
+            opacity: 0.9;
             margin-bottom: 20px;
         }
-        
-        @keyframes spin {
-            to { transform: rotate(360deg); }
+
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin: 20px 0;
+            flex-wrap: wrap;
         }
-        
-        .loading-text {
-            font-size: 18px;
+
+        .stat-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px 25px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 700;
+            display: block;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        .search-section {
+            background: rgba(39, 39, 42, 0.4);
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 15px 20px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            font-size: 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .search-input::placeholder {
+            color: #888;
+        }
+
+        .members-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: rgba(39, 39, 42, 0.4);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .members-table th,
+        .members-table td {
+            text-align: left;
+            padding: 15px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .members-table th {
+            background: rgba(24, 24, 27, 0.8);
             font-weight: 600;
-            margin-bottom: 8px;
+            color: #aaa;
+            text-transform: uppercase;
+            font-size: 0.8rem;
         }
-        
-        .loading-subtext {
+
+        .members-table tbody tr:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .member-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .member-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
             font-size: 14px;
-            color: #71717a;
+        }
+
+        .member-details {
+            flex: 1;
+        }
+
+        .member-name {
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .member-email {
+            color: #888;
+            font-size: 0.9rem;
+        }
+
+        .custom-fields {
+            font-size: 0.9rem;
+            color: #ccc;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+            font-size: 1.1rem;
+            color: #888;
+        }
+
+        .error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #ef4444;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .no-members {
+            text-align: center;
+            padding: 60px 20px;
+            color: #888;
+        }
+
+        .no-company {
+            text-align: center;
+            padding: 60px 20px;
+            color: #888;
+        }
+
+        .no-company h2 {
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+            color: #fff;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .stats {
+                gap: 15px;
+            }
+
+            .members-table {
+                font-size: 0.9rem;
+            }
+
+            .members-table th,
+            .members-table td {
+                padding: 10px 15px;
+            }
         }
     </style>
 </head>
 <body>
-    <!-- Loading Screen -->
-    <div id="loadingScreen">
-        <div class="loading-spinner"></div>
-        <div class="loading-text">Loading Member Directory</div>
-        <div class="loading-subtext">Detecting company...</div>
+    <div class="container">
+        <div class="header">
+            <h1>Member Directory</h1>
+            <div id="companyInfo" class="company-info">Loading...</div>
+            
+            <div class="stats">
+                <div class="stat-item">
+                    <span class="stat-number" id="totalMembers">-</span>
+                    <span class="stat-label">Total Members</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number" id="newThisMonth">-</span>
+                    <span class="stat-label">New This Month</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="searchSection" class="search-section" style="display: none;">
+            <input 
+                type="text" 
+                id="searchInput"
+                class="search-input" 
+                placeholder="Search members by name, email, or responses..."
+            >
+        </div>
+
+        <div id="loadingState" class="loading">
+            Loading members...
+        </div>
+
+        <div id="errorState" class="error" style="display: none;">
+        </div>
+
+        <div id="noCompanyState" class="no-company" style="display: none;">
+            <h2>No Company Detected</h2>
+            <p>Unable to detect company name from URL. Make sure you're accessing this from within Whop.</p>
+        </div>
+
+        <div id="noMembersState" class="no-members" style="display: none;">
+            <h3>No members found</h3>
+            <p>No members have joined this community yet.</p>
+        </div>
+
+        <table id="membersTable" class="members-table" style="display: none;">
+            <thead>
+                <tr>
+                    <th>Member</th>
+                    <th>Custom Fields</th>
+                    <th>Joined</th>
+                </tr>
+            </thead>
+            <tbody id="membersTableBody">
+            </tbody>
+        </table>
     </div>
 
-    <!-- Main App Container -->
-    <div id="app"></div>
-
     <script>
-        // SIMPLIFIED Member Directory - Direct Company Name Detection
         class MemberDirectory {
             constructor() {
                 this.members = [];
                 this.filteredMembers = [];
-                this.searchTerm = '';
-                this.sortField = 'joined_at';
-                this.sortDirection = 'desc';
-                this.loading = false;
-                this.companyId = null;
+                this.companyName = this.getCompanyFromUrl();
                 
                 this.init();
             }
 
-            async init() {
-                try {
-                    console.log('🚀 Initializing Member Directory...');
-                    
-                    // SIMPLIFIED: Just get company name from URL
-                    this.companyId = this.getCompanyFromUrl();
-                    
-                    if (!this.companyId) {
-                        this.showCompanyIdError();
-                        return;
-                    }
-                    
-                    console.log(`✅ Using company: ${this.companyId}`);
-                    this.createModernUI();
-                    await this.loadMembers();
-                    this.setupEventListeners();
-                    this.hideLoadingScreen();
-                } catch (error) {
-                    console.error('❌ Initialization error:', error);
-                    this.hideLoadingScreen();
-                    this.showCompanyIdError();
-                }
-            }
-
-            // SIMPLIFIED: Extract company name directly from URL
+            // Extract company name from URL
             getCompanyFromUrl() {
                 // Check if we're in an iframe and get the parent URL
                 if (window.parent !== window && document.referrer) {
@@ -110,13 +297,10 @@
                         console.log('🔍 Checking parent URL:', parentUrl);
                         
                         // Extract from whop.com/{company}/...
-                        const match = parentUrl.match(/whop\.com\/([^\/]+)/);
+                        const match = parentUrl.match(/whop\.com\/([^\/\?#]+)/);
                         if (match) {
                             const companyName = match[1];
                             console.log(`✅ Found company from parent URL: ${companyName}`);
-                            
-                            // Save to localStorage for persistence
-                            localStorage.setItem('whop_company_id', companyName);
                             return companyName;
                         }
                     } catch (error) {
@@ -126,562 +310,192 @@
                 
                 // Check current URL
                 const currentUrl = window.location.href;
-                const currentMatch = currentUrl.match(/whop\.com\/([^\/]+)/);
+                const currentMatch = currentUrl.match(/whop\.com\/([^\/\?#]+)/);
                 if (currentMatch) {
                     const companyName = currentMatch[1];
                     console.log(`✅ Found company from current URL: ${companyName}`);
-                    localStorage.setItem('whop_company_id', companyName);
                     return companyName;
                 }
                 
-                // Check localStorage as fallback
-                const stored = localStorage.getItem('whop_company_id');
-                if (stored && stored !== 'null' && stored !== 'undefined') {
-                    console.log(`✅ Found company from storage: ${stored}`);
-                    return stored;
-                }
-                
-                console.log('❌ No company found');
+                console.log('❌ No company found in URL');
                 return null;
             }
 
-            showCompanyIdError() {
-                this.hideLoadingScreen();
-                document.getElementById('app').innerHTML = `
-                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; background: #0a0a0a; color: white; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-                        <div style="text-align: center; max-width: 600px; padding: 40px;">
-                            <div style="font-size: 64px; margin-bottom: 20px;">🏢</div>
-                            <h1 style="font-size: 32px; margin-bottom: 16px;">Company Not Detected</h1>
-                            <p style="font-size: 18px; color: #888; margin-bottom: 32px;">
-                                Could not automatically detect your company from the URL. Please enter your company name manually.
-                            </p>
-                            
-                            <div style="background: rgba(39, 39, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 24px; margin-bottom: 32px; text-align: left;">
-                                <h3 style="margin-bottom: 16px; color: #fff;">How it works:</h3>
-                                <ul style="color: #ccc; line-height: 1.6;">
-                                    <li><strong>Your Whop URL:</strong> whop.com/<strong>jaredstivala</strong>/app-name</li>
-                                    <li><strong>Company name:</strong> "jaredstivala"</li>
-                                    <li><strong>We use this directly</strong> as your company identifier</li>
-                                </ul>
-                            </div>
-                            
-                            <div style="display: flex; gap: 12px; max-width: 400px; margin: 0 auto;">
-                                <input 
-                                    type="text" 
-                                    id="companyIdInput" 
-                                    placeholder="Enter company name (e.g. jaredstivala)" 
-                                    style="flex: 1; padding: 12px 16px; background: rgba(39, 39, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; color: white; font-size: 14px;"
-                                />
-                                <button 
-                                    onclick="memberDirectory.setCompanyId()" 
-                                    style="padding: 12px 20px; background: #3b82f6; border: none; border-radius: 8px; color: white; font-weight: 600; cursor: pointer;"
-                                >
-                                    Go
-                                </button>
-                            </div>
-                            
-                            <p style="font-size: 14px; color: #666; margin-top: 24px;">
-                                Enter just the company name from your Whop URL (e.g. "jaredstivala", not "biz_...")
-                            </p>
-                        </div>
-                    </div>
-                `;
-                
-                // Add enter key listener
-                setTimeout(() => {
-                    const input = document.getElementById('companyIdInput');
-                    if (input) {
-                        input.addEventListener('keypress', (e) => {
-                            if (e.key === 'Enter') {
-                                this.setCompanyId();
-                            }
-                        });
-                    }
-                }, 100);
-            }
-
-            setCompanyId() {
-                const input = document.getElementById('companyIdInput');
-                const companyId = input.value.trim();
-                
-                if (!companyId) {
-                    alert('Please enter a company name');
+            async init() {
+                if (!this.companyName) {
+                    this.showNoCompany();
                     return;
                 }
                 
-                // Store for future visits
-                localStorage.setItem('whop_company_id', companyId);
-                this.companyId = companyId;
-                
-                // Restart the app
-                this.init();
-            }
-
-            hideLoadingScreen() {
-                const loadingScreen = document.getElementById('loadingScreen');
-                if (loadingScreen) {
-                    loadingScreen.style.opacity = '0';
-                    setTimeout(() => {
-                        loadingScreen.style.display = 'none';
-                    }, 300);
-                }
-            }
-
-            createModernUI() {
-                const appContainer = document.getElementById('app');
-                appContainer.innerHTML = `
-                    <div class="app-container">
-                        <!-- Company Header -->
-                        <div class="company-header" style="max-width: 1200px; margin: 0 auto; padding: 20px 24px; border-bottom: 1px solid rgba(255, 255, 255, 0.08);">
-                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
-                                <div>
-                                    <h1 style="font-size: 24px; font-weight: 700; color: #fff; margin-bottom: 4px;">Member Directory</h1>
-                                    <p style="color: #888; font-size: 14px;" id="companyInfo">Company: ${this.companyId}</p>
-                                </div>
-                                <button onclick="memberDirectory.changeCompany()" class="btn-secondary" style="background: rgba(39, 39, 42, 0.8); border: 1px solid rgba(255, 255, 255, 0.12); color: #ffffff; padding: 8px 16px; border-radius: 6px; font-size: 12px; cursor: pointer;">
-                                    Change Company
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- Stats Cards -->
-                        <section class="stats-section">
-                            <div class="stats-grid">
-                                <div class="stat-card">
-                                    <div class="stat-icon stat-icon-primary">
-                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="2"/>
-                                            <circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="2"/>
-                                            <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" stroke-width="2"/>
-                                        </svg>
-                                    </div>
-                                    <div class="stat-content">
-                                        <div class="stat-value" id="totalMembers">0</div>
-                                        <div class="stat-label">Total Members</div>
-                                    </div>
-                                </div>
-                                
-                                <div class="stat-card">
-                                    <div class="stat-icon stat-icon-success">
-                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                                            <path d="M22 12h-4l-3 9L9 3l-3 9H2" stroke="currentColor" stroke-width="2"/>
-                                        </svg>
-                                    </div>
-                                    <div class="stat-content">
-                                        <div class="stat-value" id="newThisMonth">0</div>
-                                        <div class="stat-label">New This Month</div>
-                                    </div>
-                                </div>
-                                
-                                <div class="stat-card">
-                                    <div class="stat-icon stat-icon-warning">
-                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                                            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
-                                            <path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01" stroke="currentColor" stroke-width="2"/>
-                                        </svg>
-                                    </div>
-                                    <div class="stat-content">
-                                        <div class="stat-value" id="activeMembers">0</div>
-                                        <div class="stat-label">Active Members</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </section>
-
-                        <!-- Controls -->
-                        <section class="controls-section">
-                            <div class="controls-bar">
-                                <div class="search-container">
-                                    <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none">
-                                        <circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2"/>
-                                        <path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="2"/>
-                                    </svg>
-                                    <input 
-                                        type="text" 
-                                        id="searchInput" 
-                                        placeholder="Search members..." 
-                                        class="search-input"
-                                    />
-                                </div>
-                                
-                                <div class="filter-controls">
-                                    <select id="sortSelect" class="select-input">
-                                        <option value="joined_at_desc">Newest First</option>
-                                        <option value="joined_at_asc">Oldest First</option>
-                                        <option value="name_asc">Name A-Z</option>
-                                        <option value="name_desc">Name Z-A</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </section>
-
-                        <!-- Members Table -->
-                        <section class="table-section">
-                            <div class="table-container">
-                                <div class="table-header">
-                                    <h2>Members</h2>
-                                    <div class="table-meta">
-                                        <span id="memberCount">0 members</span>
-                                    </div>
-                                </div>
-                                
-                                <div class="table-wrapper">
-                                    <table class="members-table">
-                                        <thead>
-                                            <tr>
-                                                <th class="col-member">
-                                                    <button class="th-button" data-sort="name">
-                                                        Member
-                                                        <svg class="sort-icon" width="14" height="14" viewBox="0 0 24 24" fill="none">
-                                                            <path d="M8 9l4-4 4 4M16 15l-4 4-4-4" stroke="currentColor" stroke-width="2"/>
-                                                        </svg>
-                                                    </button>
-                                                </th>
-                                                <th class="col-custom-fields">
-                                                    <button class="th-button">
-                                                        Custom Fields
-                                                    </button>
-                                                </th>
-                                                <th class="col-joined">
-                                                    <button class="th-button" data-sort="joined_at">
-                                                        Joined
-                                                        <svg class="sort-icon" width="14" height="14" viewBox="0 0 24 24" fill="none">
-                                                            <path d="M8 9l4-4 4 4M16 15l-4 4-4-4" stroke="currentColor" stroke-width="2"/>
-                                                        </svg>
-                                                    </button>
-                                                </th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="membersTableBody">
-                                            <!-- Loading state -->
-                                        </tbody>
-                                    </table>
-                                    
-                                    <!-- Loading State -->
-                                    <div id="loadingState" class="loading-state">
-                                        <div class="loading-spinner"></div>
-                                        <p>Loading members...</p>
-                                    </div>
-                                    
-                                    <!-- Empty State -->
-                                    <div id="emptyState" class="empty-state" style="display: none;">
-                                        <div class="empty-icon">
-                                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
-                                                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
-                                                <path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01" stroke="currentColor" stroke-width="2"/>
-                                            </svg>
-                                        </div>
-                                        <h3>No members found</h3>
-                                        <p>Members will appear here once they join your community!</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </section>
-                    </div>
-
-                    ${this.getStyles()}
-                `;
-            }
-
-            changeCompany() {
-                localStorage.removeItem('whop_company_id');
-                this.companyId = null;
-                this.showCompanyIdError();
+                document.getElementById('companyInfo').textContent = `Company: ${this.companyName}`;
+                await this.loadMembers();
+                this.setupEventListeners();
             }
 
             async loadMembers() {
-                this.setLoading(true);
-                
                 try {
-                    console.log(`🔍 Loading members for company: ${this.companyId}`);
+                    console.log(`🔍 Loading members for company: ${this.companyName}`);
                     
-                    const response = await fetch(`/api/members/${this.companyId}`);
-                    
-                    console.log('📡 Response status:', response.status);
+                    const response = await fetch(`/api/directory/${this.companyName}`);
                     
                     if (!response.ok) {
                         if (response.status === 404) {
-                            // Company not found - this is expected for new companies
-                            console.log(`ℹ️  Company ${this.companyId} not found yet - will be created when first member joins`);
-                            this.members = [];
-                            this.filterAndRenderMembers();
-                            this.updateStats();
-                            this.setLoading(false);
-                            return;
+                            throw new Error(`Company "${this.companyName}" not found in database`);
                         }
-                        throw new Error(`HTTP error! status: ${response.status}`);
+                        throw new Error(`Failed to fetch members: ${response.status}`);
                     }
-                    
+
                     const data = await response.json();
                     console.log('✅ API Response:', data);
                     
                     if (data.success) {
                         this.members = data.members || [];
-                        console.log(`📊 Loaded ${this.members.length} members for company ${this.companyId}`);
-                        this.filterAndRenderMembers();
+                        this.filteredMembers = [...this.members];
+                        
+                        document.getElementById('companyInfo').textContent = 
+                            `${data.company_name} (${data.company_id}) • ${this.members.length} members`;
+                        
                         this.updateStats();
+                        this.renderMembers();
+                        this.showContent();
                     } else {
-                        console.error('Failed to load members:', data.error);
-                        this.showError(`Failed to load members: ${data.error || 'Unknown error'}`);
+                        throw new Error(data.error || 'Unknown error');
                     }
+                    
                 } catch (error) {
-                    console.error('❌ Error loading members:', error);
-                    this.showError(`Error loading members: ${error.message}`);
-                } finally {
-                    this.setLoading(false);
+                    console.error('Error loading members:', error);
+                    this.showError(error.message);
                 }
-            }
-
-            setupEventListeners() {
-                const searchInput = document.getElementById('searchInput');
-                searchInput?.addEventListener('input', (e) => {
-                    this.searchTerm = e.target.value.toLowerCase();
-                    this.filterAndRenderMembers();
-                });
-
-                const sortSelect = document.getElementById('sortSelect');
-                sortSelect?.addEventListener('change', (e) => {
-                    const [field, direction] = e.target.value.split('_');
-                    this.sortField = field;
-                    this.sortDirection = direction;
-                    this.filterAndRenderMembers();
-                });
-
-                document.querySelectorAll('[data-sort]').forEach(button => {
-                    button.addEventListener('click', (e) => {
-                        const field = e.currentTarget.dataset.sort;
-                        if (this.sortField === field) {
-                            this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
-                        } else {
-                            this.sortField = field;
-                            this.sortDirection = 'asc';
-                        }
-                        this.updateSortSelect();
-                        this.filterAndRenderMembers();
-                    });
-                });
-            }
-
-            updateSortSelect() {
-                const sortSelect = document.getElementById('sortSelect');
-                if (sortSelect) {
-                    sortSelect.value = `${this.sortField}_${this.sortDirection}`;
-                }
-            }
-
-            setLoading(loading) {
-                this.loading = loading;
-                const loadingState = document.getElementById('loadingState');
-                const tableBody = document.getElementById('membersTableBody');
-                
-                if (loading) {
-                    if (loadingState) loadingState.style.display = 'flex';
-                    if (tableBody) tableBody.style.display = 'none';
-                } else {
-                    if (loadingState) loadingState.style.display = 'none';
-                    if (tableBody) tableBody.style.display = 'table-row-group';
-                }
-            }
-
-            showError(message) {
-                const tableBody = document.getElementById('membersTableBody');
-                const emptyState = document.getElementById('emptyState');
-                
-                if (tableBody) {
-                    tableBody.style.display = 'table-row-group';
-                    if (emptyState) emptyState.style.display = 'none';
-                    
-                    tableBody.innerHTML = `
-                        <tr>
-                            <td colspan="3" class="error-cell">
-                                <div style="text-align: center; padding: 40px;">
-                                    <div style="color: #ef4444; font-size: 18px; margin-bottom: 12px;">⚠️ ${this.escapeHtml(message)}</div>
-                                    <div style="color: #71717a; font-size: 14px; margin-bottom: 20px;">
-                                        Company: ${this.companyId}
-                                    </div>
-                                    <button onclick="memberDirectory.loadMembers()" class="btn-secondary">
-                                        Retry
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                    `;
-                }
-            }
-
-            filterAndRenderMembers() {
-                this.filteredMembers = this.members.filter(member => {
-                    if (!this.searchTerm) return true;
-                    
-                    const searchFields = [
-                        member.name,
-                        member.username,
-                        member.email,
-                        JSON.stringify(member.waitlist_responses || {})
-                    ].filter(Boolean).join(' ').toLowerCase();
-                    
-                    return searchFields.includes(this.searchTerm);
-                });
-
-                this.filteredMembers.sort((a, b) => {
-                    let aValue, bValue;
-                    
-                    switch (this.sortField) {
-                        case 'name':
-                            aValue = (a.username || a.name || 'Anonymous').toLowerCase();
-                            bValue = (b.username || b.name || 'Anonymous').toLowerCase();
-                            break;
-                        case 'joined_at':
-                            aValue = new Date(a.joined_at || 0);
-                            bValue = new Date(b.joined_at || 0);
-                            break;
-                        default:
-                            return 0;
-                    }
-                    
-                    if (this.sortDirection === 'asc') {
-                        return aValue > bValue ? 1 : -1;
-                    } else {
-                        return aValue < bValue ? 1 : -1;
-                    }
-                });
-
-                this.renderMembers();
-                this.updateMemberCount();
-            }
-
-            renderMembers() {
-                const tableBody = document.getElementById('membersTableBody');
-                const emptyState = document.getElementById('emptyState');
-                
-                if (!tableBody || !emptyState) return;
-                
-                if (this.filteredMembers.length === 0) {
-                    tableBody.style.display = 'none';
-                    emptyState.style.display = 'flex';
-                    return;
-                }
-                
-                tableBody.style.display = 'table-row-group';
-                emptyState.style.display = 'none';
-                
-                tableBody.innerHTML = this.filteredMembers.map(member => 
-                    this.createMemberRow(member)
-                ).join('');
-            }
-
-            createMemberRow(member) {
-                const primaryName = member.username || member.name || 'Anonymous';
-                const secondaryInfo = member.name && member.username !== member.name ? member.name : member.email || '';
-                const joinedDate = member.joined_at ? new Date(member.joined_at).toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                    year: 'numeric'
-                }) : 'Unknown';
-                
-                const initials = primaryName.slice(0, 2).toUpperCase();
-                
-                return `
-                    <tr>
-                        <td>
-                            <div class="member-cell">
-                                <div class="member-avatar">${initials}</div>
-                                <div class="member-info">
-                                    <div class="member-name">
-                                        ${member.username ? `<span class="member-username">@${this.escapeHtml(member.username)}</span>` : this.escapeHtml(primaryName)}
-                                    </div>
-                                    ${secondaryInfo ? `<div class="member-email">${this.escapeHtml(secondaryInfo)}</div>` : ''}
-                                </div>
-                            </div>
-                        </td>
-                        <td>
-                            <div class="custom-fields">
-                                ${this.formatCustomFields(member.waitlist_responses || member.custom_fields || {})}
-                            </div>
-                        </td>
-                        <td>
-                            <div class="date-cell">${joinedDate}</div>
-                        </td>
-                    </tr>
-                `;
-            }
-
-            formatCustomFields(customFields) {
-                if (!customFields || typeof customFields !== 'object') {
-                    return '<div class="no-fields">No custom fields</div>';
-                }
-
-                const entries = Object.entries(customFields).filter(([key]) => 
-                    !['status', 'error', 'note', 'raw_indicator', 'raw_length', 'source'].includes(key)
-                );
-                
-                if (entries.length === 0) {
-                    return '<div class="no-fields">No custom fields</div>';
-                }
-
-                return entries.map(([key, value]) => {
-                    const displayKey = key
-                        .replace(/_/g, ' ')
-                        .replace(/([A-Z])/g, ' $1')
-                        .replace(/^\w/, c => c.toUpperCase())
-                        .trim();
-
-                    let displayValue = value;
-                    if (typeof value === 'object') {
-                        displayValue = JSON.stringify(value);
-                    } else if (typeof value === 'boolean') {
-                        displayValue = value ? 'Yes' : 'No';
-                    } else if (!value || value === 'null' || value === 'undefined') {
-                        displayValue = 'Not provided';
-                    }
-
-                    if (typeof displayValue === 'string' && displayValue.length > 100) {
-                        displayValue = displayValue.substring(0, 100) + '...';
-                    }
-
-                    return `
-                        <div class="field-item">
-                            <div class="field-label">${this.escapeHtml(displayKey)}</div>
-                            <div class="field-value">${this.escapeHtml(String(displayValue))}</div>
-                        </div>
-                    `;
-                }).join('');
             }
 
             updateStats() {
                 const totalMembers = this.members.length;
-                const currentMonth = new Date().getMonth();
-                const currentYear = new Date().getFullYear();
+                const now = new Date();
+                const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
                 
-                const newThisMonth = this.members.filter(member => {
-                    if (!member.joined_at) return false;
-                    const joinDate = new Date(member.joined_at);
-                    return joinDate.getMonth() === currentMonth && joinDate.getFullYear() === currentYear;
-                }).length;
-                
-                const activeMembers = this.members.filter(member => member.status === 'active').length;
+                const newThisMonth = this.members.filter(member => 
+                    member.joined_at && new Date(member.joined_at) > thirtyDaysAgo
+                ).length;
 
-                const totalElement = document.getElementById('totalMembers');
-                const newElement = document.getElementById('newThisMonth');
-                const activeElement = document.getElementById('activeMembers');
-
-                if (totalElement) totalElement.textContent = totalMembers;
-                if (newElement) newElement.textContent = newThisMonth;
-                if (activeElement) activeElement.textContent = activeMembers;
+                document.getElementById('totalMembers').textContent = totalMembers;
+                document.getElementById('newThisMonth').textContent = newThisMonth;
             }
 
-            updateMemberCount() {
-                const count = this.filteredMembers.length;
-                const total = this.members.length;
-                const memberCount = document.getElementById('memberCount');
+            renderMembers() {
+                const tableBody = document.getElementById('membersTableBody');
                 
-                if (memberCount) {
-                    if (count === total) {
-                        memberCount.textContent = `${total} member${total !== 1 ? 's' : ''}`;
-                    } else {
-                        memberCount.textContent = `${count} of ${total} member${total !== 1 ? 's' : ''}`;
-                    }
+                if (this.filteredMembers.length === 0) {
+                    this.showNoMembers();
+                    return;
                 }
+
+                tableBody.innerHTML = this.filteredMembers.map(member => {
+                    const name = member.name || member.username || 'Anonymous';
+                    const email = member.email || 'No email';
+                    const avatar = name.charAt(0).toUpperCase();
+                    const joinedDate = member.joined_at ? 
+                        new Date(member.joined_at).toLocaleDateString() : 'Unknown';
+                    
+                    // Format custom fields
+                    const customFields = member.custom_fields || {};
+                    const fieldsText = Object.entries(customFields)
+                        .filter(([key, value]) => value && key !== 'status' && key !== 'error')
+                        .map(([key, value]) => `${key}: ${value}`)
+                        .join(', ') || 'No custom fields';
+
+                    return `
+                        <tr>
+                            <td>
+                                <div class="member-info">
+                                    <div class="member-avatar">${avatar}</div>
+                                    <div class="member-details">
+                                        <div class="member-name">${this.escapeHtml(name)}</div>
+                                        <div class="member-email">${this.escapeHtml(email)}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="custom-fields">${this.escapeHtml(fieldsText)}</div>
+                            </td>
+                            <td>${joinedDate}</td>
+                        </tr>
+                    `;
+                }).join('');
+                
+                document.getElementById('membersTable').style.display = 'table';
+            }
+
+            setupEventListeners() {
+                const searchInput = document.getElementById('searchInput');
+                searchInput.addEventListener('input', (e) => {
+                    this.filterMembers(e.target.value);
+                });
+            }
+
+            filterMembers(searchTerm) {
+                const term = searchTerm.toLowerCase().trim();
+                
+                if (!term) {
+                    this.filteredMembers = [...this.members];
+                } else {
+                    this.filteredMembers = this.members.filter(member => {
+                        const name = (member.name || member.username || '').toLowerCase();
+                        const email = (member.email || '').toLowerCase();
+                        const fields = JSON.stringify(member.custom_fields || {}).toLowerCase();
+                        
+                        return name.includes(term) || 
+                               email.includes(term) || 
+                               fields.includes(term);
+                    });
+                }
+                
+                this.renderMembers();
+            }
+
+            showContent() {
+                document.getElementById('loadingState').style.display = 'none';
+                document.getElementById('errorState').style.display = 'none';
+                document.getElementById('noMembersState').style.display = 'none';
+                document.getElementById('noCompanyState').style.display = 'none';
+                document.getElementById('searchSection').style.display = 'block';
+            }
+
+            showError(message) {
+                document.getElementById('loadingState').style.display = 'none';
+                document.getElementById('membersTable').style.display = 'none';
+                document.getElementById('noMembersState').style.display = 'none';
+                document.getElementById('noCompanyState').style.display = 'none';
+                document.getElementById('searchSection').style.display = 'none';
+                
+                const errorElement = document.getElementById('errorState');
+                errorElement.style.display = 'block';
+                errorElement.innerHTML = `
+                    <h3>Error Loading Directory</h3>
+                    <p>${this.escapeHtml(message)}</p>
+                    <p style="margin-top: 10px; font-size: 14px;">Company: ${this.companyName}</p>
+                    <button onclick="location.reload()" style="margin-top: 15px; padding: 8px 16px; background: #ef4444; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                        Retry
+                    </button>
+                `;
+            }
+
+            showNoMembers() {
+                document.getElementById('loadingState').style.display = 'none';
+                document.getElementById('membersTable').style.display = 'none';
+                document.getElementById('errorState').style.display = 'none';
+                document.getElementById('noCompanyState').style.display = 'none';
+                document.getElementById('searchSection').style.display = 'none';
+                document.getElementById('noMembersState').style.display = 'block';
+            }
+
+            showNoCompany() {
+                document.getElementById('loadingState').style.display = 'none';
+                document.getElementById('membersTable').style.display = 'none';
+                document.getElementById('errorState').style.display = 'none';
+                document.getElementById('noMembersState').style.display = 'none';
+                document.getElementById('searchSection').style.display = 'none';
+                document.getElementById('noCompanyState').style.display = 'block';
+                document.getElementById('companyInfo').textContent = 'No company detected';
             }
 
             escapeHtml(text) {
@@ -694,92 +508,13 @@
                 };
                 return text.replace(/[&<>"']/g, m => map[m]);
             }
-
-            // Include all the CSS styles here
-            getStyles() {
-                return `<style>
-                    /* All the existing CSS styles remain the same */
-                    * { margin: 0; padding: 0; box-sizing: border-box; }
-                    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Inter', sans-serif; background: #0a0a0a; color: #ffffff; line-height: 1.5; overflow-x: hidden; }
-                    .app-container { min-height: 100vh; background: linear-gradient(180deg, #0a0a0a 0%, #111111 100%); }
-                    .stats-section { max-width: 1200px; margin: 0 auto; padding: 32px 24px; }
-                    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
-                    .stat-card { background: rgba(39, 39, 42, 0.5); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; padding: 24px; display: flex; align-items: center; gap: 16px; transition: all 0.3s; backdrop-filter: blur(10px); }
-                    .stat-card:hover { background: rgba(39, 39, 42, 0.8); border-color: rgba(255, 255, 255, 0.12); transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3); }
-                    .stat-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-                    .stat-icon-primary { background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; }
-                    .stat-icon-success { background: linear-gradient(135deg, #10b981, #059669); color: white; }
-                    .stat-icon-warning { background: linear-gradient(135deg, #f59e0b, #d97706); color: white; }
-                    .stat-value { font-size: 32px; font-weight: 700; color: #ffffff; line-height: 1; }
-                    .stat-label { font-size: 14px; color: #a1a1aa; font-weight: 500; }
-                    .controls-section { max-width: 1200px; margin: 0 auto; padding: 0 24px 24px; }
-                    .controls-bar { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
-                    .search-container { position: relative; flex: 1; min-width: 300px; }
-                    .search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #71717a; pointer-events: none; }
-                    .search-input { width: 100%; background: rgba(39, 39, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 12px 16px 12px 44px; font-size: 14px; color: #ffffff; transition: all 0.2s; }
-                    .search-input:focus { outline: none; border-color: #3b82f6; background: rgba(39, 39, 42, 0.8); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
-                    .search-input::placeholder { color: #71717a; }
-                    .select-input { background: rgba(39, 39, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 10px 14px; font-size: 14px; color: #ffffff; cursor: pointer; min-width: 160px; }
-                    .select-input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
-                    .table-section { max-width: 1200px; margin: 0 auto; padding: 0 24px 40px; }
-                    .table-container { background: rgba(39, 39, 42, 0.4); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; overflow: hidden; backdrop-filter: blur(10px); }
-                    .table-header { padding: 24px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); display: flex; justify-content: space-between; align-items: center; }
-                    .table-header h2 { font-size: 20px; font-weight: 600; color: #ffffff; }
-                    .table-meta { font-size: 14px; color: #71717a; }
-                    .table-wrapper { position: relative; }
-                    .members-table { width: 100%; border-collapse: collapse; }
-                    .members-table thead { background: rgba(24, 24, 27, 0.8); }
-                    .members-table th { padding: 0; text-align: left; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
-                    .th-button { width: 100%; background: none; border: none; color: #a1a1aa; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; padding: 16px 20px; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.2s; }
-                    .th-button:hover { color: #ffffff; background: rgba(255, 255, 255, 0.05); }
-                    .sort-icon { opacity: 0.5; transition: opacity 0.2s; }
-                    .th-button:hover .sort-icon { opacity: 1; }
-                    .members-table td { padding: 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); vertical-align: top; }
-                    .members-table tr { transition: all 0.2s; }
-                    .members-table tbody tr:hover { background: rgba(255, 255, 255, 0.03); }
-                    .member-cell { display: flex; align-items: center; gap: 12px; }
-                    .member-avatar { width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #3b82f6, #8b5cf6); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 16px; flex-shrink: 0; }
-                    .member-info { flex: 1; min-width: 0; }
-                    .member-name { font-size: 16px; font-weight: 600; color: #ffffff; margin-bottom: 2px; display: flex; align-items: center; gap: 8px; }
-                    .member-username { color: #3b82f6; font-weight: 500; }
-                    .member-email { font-size: 14px; color: #71717a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-                    .custom-fields { max-width: 300px; }
-                    .field-item { margin-bottom: 8px; display: flex; flex-direction: column; gap: 2px; }
-                    .field-item:last-child { margin-bottom: 0; }
-                    .field-label { font-size: 12px; color: #71717a; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
-                    .field-value { font-size: 14px; color: #ffffff; line-height: 1.4; }
-                    .no-fields { color: #71717a; font-style: italic; font-size: 14px; }
-                    .date-cell { text-align: right; color: #a1a1aa; font-size: 14px; white-space: nowrap; }
-                    .loading-state, .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; text-align: center; }
-                    .loading-spinner { width: 32px; height: 32px; border: 3px solid rgba(255, 255, 255, 0.1); border-radius: 50%; border-top-color: #3b82f6; animation: spin 1s ease-in-out infinite; margin-bottom: 16px; }
-                    @keyframes spin { to { transform: rotate(360deg); } }
-                    .empty-icon { margin-bottom: 16px; color: #71717a; }
-                    .empty-state h3 { font-size: 18px; color: #ffffff; margin-bottom: 8px; }
-                    .empty-state p { color: #71717a; font-size: 14px; }
-                    .col-member { width: 35%; }
-                    .col-custom-fields { width: 45%; }
-                    .col-joined { width: 20%; }
-                    @media (max-width: 768px) {
-                        .stats-grid { grid-template-columns: 1fr; }
-                        .controls-bar { flex-direction: column; align-items: stretch; }
-                        .search-container { min-width: auto; }
-                        .table-container { border-radius: 12px; margin: 0 8px; }
-                        .members-table { font-size: 14px; }
-                        .members-table td { padding: 16px; }
-                        .member-cell { flex-direction: column; align-items: flex-start; gap: 8px; }
-                        .custom-fields { max-width: none; }
-                        .col-member, .col-custom-fields, .col-joined { width: auto; }
-                    }
-                </style>`;
-            }
         }
 
-        // Initialize the application when DOM is ready
+        // Initialize when page loads
         document.addEventListener('DOMContentLoaded', () => {
             window.memberDirectory = new MemberDirectory();
         });
 
-        // If DOM is already loaded, initialize immediately
         if (document.readyState !== 'loading') {
             window.memberDirectory = new MemberDirectory();
         }
